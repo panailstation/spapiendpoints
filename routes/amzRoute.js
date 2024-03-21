@@ -4,30 +4,24 @@ const {
   catalogueItems,
   finances,
   getListingItems,
-  messaging,
-  notifications,
   orders,
   productFees,
   productPricing,
   reports,
   sales,
   getShipments,
-  sellers,
-  endpoints,
+  auth,
 } = require("../controllers/amzController");
 
-router.get("/", endpoints);
+router.post("/auth", auth);
 router.get("/catalogue-items", catalogueItems);
-router.get("/finances", finances);
 router.get("/listing-items", getListingItems);
-router.get("/messaging", messaging);
-router.get("/notifications", notifications);
 router.get("/orders", orders);
+router.get("/finances", finances);
 router.get("/product-fees", productFees);
 router.get("/product-pricing", productPricing);
 router.get("/reports", reports);
 router.get("/sales", sales);
 router.get("/get-shipments", getShipments);
-router.get("/sellers", sellers);
 
 module.exports = router;
