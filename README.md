@@ -9,4 +9,4 @@
 
 ## You have succeeded in starting the server. You can then go to the the port that you get e.g localhost:5000/api/amz
 
-### `localhost:5000/api/amz` will give you access to all the endpoints available for amazon SP API
+### `localhost:5000/api/amz/orders` will give you access to all the orders available for your account
