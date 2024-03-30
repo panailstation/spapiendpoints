@@ -21,7 +21,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes Middleware
 app.use("/api/etsy", etsyRoute);
-app.use("/api/amz", amzRoute);
+app.use("/api/amz", amzRoute); 
 
 
 // Error Middleware
