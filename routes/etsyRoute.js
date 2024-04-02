@@ -1,9 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getEtsyOrders,
+  getListings, ping, oAuth, authenticate,
 } = require("../controllers/etsyController");
 
-router.get("/get-orders", getEtsyOrders);
+
+router.get('/', authenticate);
+router.get("/ping", ping);
+router.post("/oAuth", oAuth);
+router.get("/get-listings", getListings);
 
 module.exports = router; 

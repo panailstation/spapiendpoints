@@ -1,14 +1,28 @@
 require("dotenv").config();
 const axios = require("axios");
+const crypto = require("crypto");
+const { generateCode } = require("../utils/etsy/code-generator");
+const { response } = require("express");
 
-const getEtsyOrders = async (req, res) => {
+const base64URLEncode = (str) =>
+  str
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+
+const endpoint = "https://api.etsy.com/v3";
+const client_id = process.env.ETSY_KEY_STRING;
+const clientVerifier = base64URLEncode(crypto.randomBytes(32));
+const redirect_uri = "http://localhost:5000/oauth/redirect";
+
+
+const ping = async (req, res) => {
   try {
     const url = `https://api.etsy.com/v3/application/openapi-ping`;
     const response = await axios.get(url, {
       headers: {
-        'headers': {
-          'x-api-key': 'sb265e056jr9f7qo2w8y0kng',
-        },
+        "x-api-key": process.env.ETSY_KEY_STRING,
       },
     });
 
@@ -18,7 +32,61 @@ const getEtsyOrders = async (req, res) => {
   }
 };
 
+const authenticate = async (req, res) => {
+  const redirect = await generateCode({ client_id, redirect_uri });
+  res.render("index", {
+    uri: redirect
+  });
+};
+
+const oAuth = async (req, res) => {
+  try {
+    const authCode = req.query.code;
+    const url = `https://api.etsy.com/v3/public/oauth/token`;
+    await axios
+      .post(
+        url,
+        {
+          grant_type: "authorization_code",
+          client_id: client_id,
+          redirect_uri: redirect_uri,
+          code: authCode,
+          code_verifier: clientVerifier,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      .then((response) => {
+        return res.status(200).json(response.data);
+      })
+      .catch((error) => {
+        res.status(500).json({
+          message: "Error posting to oAuth",
+          error: error.response.data,
+        });
+      });
+  } catch (error) {
+    res.status(500).json({ message: "Error posting to oAuth", error: error });
+  }
+};
+
+const getListings = async (req, res) => {
+  try {
+    const url = `https://openapi.etsy.com/v3/listings/active?api_key=${process.env.ETSY_KEY_STRING}`;
+    const response = await axios.get(url);
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ message: "Error getting orders", error: error });
+  }
+};
 
 module.exports = {
-  getEtsyOrders,
+  ping,
+  authenticate,
+  oAuth,
+  getListings,
 };

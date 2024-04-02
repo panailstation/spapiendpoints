@@ -6,6 +6,7 @@ const etsyRoute = require("./routes/etsyRoute");
 const amzRoute = require("./routes/amzRoute"); 
 const errorHandler = require("./middleWare/errorMiddleware");
 const cookieParser = require("cookie-parser");
+const hbs = require("hbs");
 const path = require("path");
 
 const app = express();
@@ -16,6 +17,8 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors())
+app.set("view engine", "hbs");
+app.set("views", `${process.cwd()}/views`);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
