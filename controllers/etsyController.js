@@ -14,7 +14,7 @@ const base64URLEncode = (str) =>
 const endpoint = "https://api.etsy.com/v3";
 const client_id = process.env.ETSY_KEY_STRING;
 const clientVerifier = base64URLEncode(crypto.randomBytes(32));
-const redirect_uri = "https://manageorders-inventory.onrender.com/api/etsy/oauth/redirect";
+const redirect_uri = `${process.env.PORT}/api/etsy/oauth/redirect`;
 
 
 const ping = async (req, res) => {
