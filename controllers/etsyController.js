@@ -14,7 +14,7 @@ const base64URLEncode = (str) =>
 const endpoint = "https://api.etsy.com/v3";
 const client_id = process.env.ETSY_KEY_STRING;
 const clientVerifier = base64URLEncode(crypto.randomBytes(32));
-const redirect_uri = `${process.env.PORT}/api/etsy/oauth/redirect`;
+const redirect_uri = `https://manageorders-inventory.onrender.com/api/etsy/oauth/redirect`;
 
 
 const ping = async (req, res) => {
@@ -75,8 +75,12 @@ const oAuth = async (req, res) => {
 
 const getListings = async (req, res) => {
   try {
-    const url = `https://openapi.etsy.com/v3/listings/active?api_key=${process.env.ETSY_KEY_STRING}`;
-    const response = await axios.get(url);
+    const url = `https://openapi.etsy.com/v2/listings/active?api_key=${process.env.ETSY_KEY_STRING}`;
+    const response = await axios.get(url, {
+      headers: {
+        "x-api-key": process.env.ETSY_KEY_STRING,
+      },
+    });
 
     res.status(200).json(response.data);
   } catch (error) {
