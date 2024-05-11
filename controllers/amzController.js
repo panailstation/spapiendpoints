@@ -1,157 +1,16 @@
 const axios = require("axios");
 const fs = require("fs");
 const moment = require("moment");
+const { authenticate } = require("../utils/amz/auth");
+const { createFeedDocument, uploadFeed } = require("../utils/amz/feeds");
+const { shipmentData } = require("../utils/amz/shipmentData");
+const { listingData, patchListingData } = require("../utils/amz/listingData");
 
-const marketplace_id = "A1PA6795UKMFR9";
+const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
+const marketplaceIds = ["ATVPDKIKX0DER", "A1PA6795UKMFR9"] // This is used for the case of many ids. You can add as much as possible. 
 const endpoint = "https://sellingpartnerapi-eu.amazon.com";
-const sellerId = "A12ZW5F2C6LX3M";
 const sku = "T5-TUY3-3FH8";
 
-const exampleFeedDocument = {
-  header: {
-    sellerId: "AXXXXXXXXXXXX", // Please add a correct seller Id here
-    version: "2.0",
-    issueLocale: "en_US",
-  },
-  messages: [
-    {
-      messageId: 1,
-      sku: "My-SKU-A",
-      operationType: "DELETE",
-    },
-    {
-      messageId: 2,
-      sku: "My-SKU-B",
-      operationType: "PARTIAL_UPDATE",
-      productType: "LUGGAGE",
-      attributes: {
-        fulfillment_availability: [
-          {
-            fulfillment_channel_code: "DEFAULT",
-            quantity: 10,
-          },
-        ],
-      },
-    },
-    {
-      messageId: 3,
-      sku: "My-SKU-C",
-      operationType: "UPDATE",
-      productType: "LUGGAGE",
-      requirements: "LISTING_OFFER_ONLY",
-      attributes: {
-        condition_type: [
-          {
-            value: "new_new",
-            marketplace_id: "ATVPDKIKX0DER",
-          },
-        ],
-        merchant_suggested_asin: [
-          {
-            value: "AXXXXXXXXXXXX",
-            marketplace_id: "A1PA6795UKMFR9",
-          },
-        ],
-        fulfillment_availability: [
-          {
-            fulfillment_channel_code: "DEFAULT",
-            quantity: 0,
-          },
-        ],
-        purchasable_offer: [
-          {
-            currency: "USD",
-            our_price: [
-              {
-                schedule: [
-                  {
-                    value_with_tax: 100,
-                  },
-                ],
-              },
-            ],
-            marketplace_id: "A1PA6795UKMFR9",
-          },
-        ],
-      },
-    },
-    {
-      messageId: 4,
-      sku: "My-SKU-D",
-      operationType: "PATCH",
-      productType: "LUGGAGE",
-      patches: [
-        {
-          op: "replace",
-          path: "/attributes/fulfillment_availability",
-          value: [
-            {
-              fulfillment_channel_code: "DEFAULT",
-              quantity: 10,
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
-
-const authenticate = async () => {
-  try {
-    const response = await axios.post("https://api.amazon.com/auth/o2/token", {
-      grant_type: "refresh_token",
-      refresh_token: process.env.REFRESH_TOKEN,
-      client_id: process.env.SELLING_PARTNER_APP_CLIENT_ID,
-      client_secret: process.env.SELLING_PARTNER_APP_CLIENT_SECRET,
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching access token:", error.message);
-  }
-};
-
-const createFeedDocument = async () => {
-  try {
-    const authTokens = await authenticate();
-    const response = await axios.post(
-      `${endpoint}/feeds/2021-06-30/documents`,
-      {
-        contentType: "text/xml; charset=UTF-8",
-      },
-      {
-        headers: {
-          "x-amz-access-token": authTokens.access_token,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error("Could not create Feed Document:", error.message);
-  }
-};
-
-const uploadFeed = async (feedUrl) => {
-  const contentType = "application/json; charset=utf-8";
-
-  const instance = axios.create({
-    headers: {
-      "Content-Type": contentType,
-    },
-  });
-
-  instance
-    .post(feedUrl, exampleFeedDocument)
-    .then((response) => {
-      console.log("Upload successful:", response.data);
-      return response.data;
-    })
-    .catch((error) => {
-      console.error("Upload failed:", error.response.data);
-    });
-};
 
 const auth = async (req, res) => {
   try {
@@ -217,63 +76,7 @@ const createShipment = async (req, res) => {
     await axios
       .post(
         url,
-        {
-          clientReferenceId: "911-7267646-6348616",
-          shipFrom: {
-            name: "test name 1",
-            addressLine1: "some Test address 1",
-            postalCode: "90013",
-            city: "Los Angeles",
-            countryCode: "US",
-            stateOrRegion: "CA",
-            email: "testEmail1@amazon.com",
-            phoneNumber: "1234567890",
-          },
-          shipTo: {
-            name: "test name 2",
-            addressLine1: "some Test address 2",
-            postalCode: "90013-1805",
-            city: "LOS ANGELES",
-            countryCode: "US",
-            stateOrRegion: "CA",
-            email: "testEmail2@amazon.com",
-            phoneNumber: "1234567890",
-          },
-          containers: [
-            {
-              containerType: "PACKAGE",
-              containerReferenceId: "ContainerRefId-01",
-              items: [
-                {
-                  title: "String",
-                  quantity: 2,
-                  unitPrice: {
-                    unit: "USD",
-                    value: 14.99,
-                  },
-                  unitWeight: {
-                    unit: "lb",
-                    value: 0.08164656,
-                  },
-                },
-              ],
-              dimensions: {
-                height: 12,
-                length: 36,
-                width: 15,
-                unit: "CM",
-              },
-              weight: {
-                unit: "lb",
-                value: 0.08164656,
-              },
-              value: {
-                unit: "USD",
-                value: 29.98,
-              },
-            },
-          ],
-        },
+        shipmentData(), // This data is contained in shipmentData function in the amz utils
         {
           headers: {
             "Content-Type": "application/json",
@@ -286,7 +89,7 @@ const createShipment = async (req, res) => {
       })
       .catch((error) => {
         res.status(500).json({
-          message: "Error cancelling shipment",
+          message: "Error creating shipment",
           error: error.response.data,
         });
       });
@@ -312,7 +115,7 @@ const getShipment = async (req, res) => {
       })
       .catch((error) => {
         res.status(500).json({
-          message: "Error cancelling shipment",
+          message: "Error getting shipment",
           error: error.response.data,
         });
       });
@@ -384,14 +187,14 @@ const purchaseLabel = async (req, res) => {
       })
       .catch((error) => {
         res.status(500).json({
-          message: "Error cancelling shipment",
+          message: "Error purchasing label",
           error: error.response.data,
         });
       });
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error cancelling shipment", error: error });
+      .json({ message: "Error purchasing label", error: error });
   }
 };
 
@@ -399,7 +202,7 @@ const getFeeds = async (req, res) => {
   try {
     const authTokens = await authenticate();
 
-    const url = `${endpoint}/feeds/2021-06-30/feeds?feedTypes=POST_PRODUCT_DATA`;
+    const url = `${endpoint}/feeds/2021-06-30/feeds?feedTypes=POST_PRODUCT_DATA`; // e.g for POST_PRODUCT_DATA
     await axios
       .get(url, {
         headers: {
@@ -412,12 +215,12 @@ const getFeeds = async (req, res) => {
       })
       .catch((error) => {
         res.status(500).json({
-          message: "Error cancelling shipment",
+          message: "Error getting feeds",
           error: error.response.data,
         });
       });
   } catch (error) {
-    res.status(500).json({ message: "Error getting orders", error: error });
+    res.status(500).json({ message: "Error getting feeds", error: error });
   }
 };
 
@@ -426,6 +229,8 @@ const createFeed = async (req, res) => {
     const feedDocument = await createFeedDocument();
     const authTokens = await authenticate();
 
+    // console.log('created document', feedDocument);
+
     await uploadFeed(feedDocument.url);
 
     axios
@@ -433,7 +238,7 @@ const createFeed = async (req, res) => {
         `${endpoint}/feeds/2021-06-30/feeds`,
         {
           feedType: "POST_PRODUCT_DATA",
-          marketplaceIds: ["ATVPDKIKX0DER", "A1PA6795UKMFR9"],
+          marketplaceIds: marketplaceIds,
           inputFeedDocumentId: feedDocument.feedDocumentId,
         },
         {
@@ -472,7 +277,7 @@ const getListingItems = async (req, res) => {
   try {
     const authTokens = await authenticate();
 
-    const url = `${endpoint}/listings/2021-08-01/items/${sellerId}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US&includedData=issues,attributes,summaries,offers,fulfillmentAvailability`;
+    const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US&includedData=issues,attributes,summaries,offers,fulfillmentAvailability`;
     await axios
       .get(url, {
         headers: {
@@ -499,30 +304,13 @@ const getListingItems = async (req, res) => {
 const putListing = async (req, res) => {
   try {
     const authTokens = await authenticate();
-
-    const url = `${endpoint}/listings/2021-08-01/items/${sellerId}/ABC123?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
+    
+    // TODO: Confirm url for put listing. DONE.
+    const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
       .put(
         url,
-        {
-          productType: "LUGGAGE",
-          requirements: "LISTING",
-          attributes: {
-            condition_type: [
-              {
-                value: "new_new",
-                marketplace_id: marketplace_id,
-              },
-            ],
-            item_name: [
-              {
-                value: 'AmazonBasics 16" Underseat Spinner Carry-On',
-                language_tag: "en_US",
-                marketplace_id: marketplace_id,
-              },
-            ],
-          },
-        },
+        listingData(marketplace_id),
         {
           headers: {
             "Content-Type": "application/json",
@@ -548,55 +336,11 @@ const patchListing = async (req, res) => {
   try {
     const authTokens = await authenticate();
 
-    const url = `${endpoint}/listings/2021-08-01/items/${sellerId}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
+    const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
       .patch(
         url,
-        {
-          productType: "LUGGAGE",
-          patches: [
-            {
-              op: "replace",
-              path: "/attributes/item_name",
-              value: [
-                {
-                  value: 'AmazonBasics 16" Underseat Spinner Carry-On',
-                  language_tag: "en_US",
-                  marketplace_id: marketplace_id,
-                },
-              ],
-            },
-            {
-              op: "replace",
-              path: "/attributes/purchasable_offer",
-              value: [
-                {
-                  marketplace_id: marketplace_id,
-                  currency: "USD",
-                  our_price: [
-                    {
-                      schedule: [
-                        {
-                          value_with_tax: 15.0,
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              op: "delete",
-              path: "/attributes/item_type_name",
-              value: [
-                {
-                  marketplace_id: marketplace_id,
-                  language_tag: "en_US",
-                },
-              ],
-            },
-          ],
-        },
+        patchListingData(marketplace_id),
         {
           headers: {
             "Content-Type": "application/json",
@@ -622,7 +366,7 @@ const deleteListing = async (req, res) => {
   try {
     const authTokens = await authenticate();
 
-    const url = `${endpoint}/listings/2021-08-01/items/${sellerId}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
+    const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
       .delete(
         url,

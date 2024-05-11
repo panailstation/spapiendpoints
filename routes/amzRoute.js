@@ -18,11 +18,11 @@ const {
 
 router.post("/auth", auth);
 router.get("/get-orders", getOrders);
-router.get("/get-order", getOrder);
+router.get("/get-order", getOrder); // a query "id" is required. e.g /get-order?id=302-3657553-1461165
 router.post("/createShipment", createShipment);
-router.get("/getShipment", getShipment);
-router.post("/cancelShipment", cancelShipment);
-router.post("/purchaseLabel", purchaseLabel);
+router.get("/getShipment", getShipment); // a query "id" is required. e.g /getShipment?id=89108749065790
+router.post("/cancelShipment", cancelShipment); // a query "id" is required. e.g /cancelShipment?id=89108749065790
+router.post("/purchaseLabel", purchaseLabel); // a query "id" is required. e.g /purchaseLabel?id=89108749065790
 router.post("/createFeed", createFeed);
 router.get("/getFeeds", getFeeds);
 router.get("/listing-items", getListingItems);

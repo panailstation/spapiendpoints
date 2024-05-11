@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const etsyRoute = require("./routes/etsyRoute");
 const amzRoute = require("./routes/amzRoute"); 
+const metroRoute = require("./routes/metroRoute"); 
 const errorHandler = require("./middleWare/errorMiddleware");
 const cookieParser = require("cookie-parser");
 const hbs = require("hbs");
@@ -25,13 +26,14 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Routes Middleware
 app.use("/api/etsy", etsyRoute);
 app.use("/api/amz", amzRoute); 
+app.use("/api/mtr", metroRoute); 
 
 
 // Error Middleware
 app.use(errorHandler);
 
 
-// Connect to DB and start server
+// start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server Running on port ${PORT}`);
