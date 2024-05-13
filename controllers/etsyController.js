@@ -4,19 +4,10 @@ const crypto = require("crypto");
 const { generateCode } = require("../utils/etsy/code-generator");
 const { response } = require("express");
 
-const base64URLEncode = (str) =>
-  str
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
-
-const sha256 = (buffer) => crypto.createHash("sha256").update(buffer).digest();
-
 const endpoint = "https://openapi.etsy.com/v3/";
 const client_id = process.env.ETSY_KEY_STRING;
-const clientVerifier = base64URLEncode(sha256(base64URLEncode(crypto.randomBytes(32))));
 const redirect_uri = `https://manageorders-inventory.onrender.com/api/etsy/oauth/redirect`;
+const redirect = generateCode({ client_id, redirect_uri });
 
 
 const ping = async (req, res) => {
@@ -35,9 +26,8 @@ const ping = async (req, res) => {
 };
 
 const authenticate = async (req, res) => {
-  const redirect = await generateCode({ client_id, redirect_uri });
   res.render("index", {
-    uri: redirect
+    uri: redirect.url
   });
 };
 
@@ -54,7 +44,7 @@ const oAuth = async (req, res) => {
           client_id: client_id,
           redirect_uri: redirect_uri,
           code: authCode,
-          code_verifier: clientVerifier,
+          code_verifier: redirect.codeChallenge,
         },
         {
           headers: {
