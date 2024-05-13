@@ -7,7 +7,7 @@ const {
 
 router.get('/', authenticate);
 router.get("/ping", ping);
-router.post("/oAuth", oAuth);
+router.get("/oauth/redirect", oAuth);
 router.get("/get-users", getUsers);
 router.get("/get-listings", getListings);
 
