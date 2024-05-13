@@ -42,6 +42,7 @@ const authenticate = async (req, res) => {
 const oAuth = async (req, res) => {
   try {
     const authCode = req.query.code;
+
     const url = `https://api.etsy.com/v3/public/oauth/token`;
     await axios
       .post(
@@ -60,6 +61,7 @@ const oAuth = async (req, res) => {
         }
       )
       .then((response) => {
+        console.log(response.data);
         return res.status(200).json(response.data);
       })
       .catch((error) => {
