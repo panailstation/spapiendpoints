@@ -43,8 +43,9 @@ const ping = async (req, res) => {
 const authenticate = async (req, res) => {
   try {
     const redirect = await getRedirect();
+    console.log("code1", redirect.codeChallenge);
     res.render("index", {
-      uri: redirect.url
+      uri: redirect?.url
     });
   } catch (error) {
     res.status(500).json({ message: "Error generating redirect", error });
@@ -54,6 +55,7 @@ const authenticate = async (req, res) => {
 const oAuth = async (req, res) => {
   try {
     const redirect = await getRedirect();
+    console.log("code2", redirect.codeChallenge);
     const authCode = req.query.code;
 
     const url = `https://api.etsy.com/v3/public/oauth/token`;
@@ -65,7 +67,7 @@ const oAuth = async (req, res) => {
           client_id: client_id,
           redirect_uri: redirect_uri,
           code: authCode,
-          code_verifier: redirect.codeChallenge,
+          code_verifier: redirect?.codeChallenge,
         },
         {
           headers: {
