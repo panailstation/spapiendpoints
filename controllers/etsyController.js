@@ -13,7 +13,7 @@ const base64URLEncode = (str) =>
 
 const endpoint = "https://openapi.etsy.com/v3/";
 const client_id = process.env.ETSY_KEY_STRING;
-const clientVerifier = base64URLEncode(crypto.randomBytes(32));
+const clientVerifier = base64URLEncode(sha256(base64URLEncode(crypto.randomBytes(32))));
 const redirect_uri = `https://manageorders-inventory.onrender.com/api/etsy/oauth/redirect`;
 
 
