@@ -11,6 +11,8 @@ const base64URLEncode = (str) =>
     .replace(/\//g, "_")
     .replace(/=/g, "");
 
+const sha256 = (buffer) => crypto.createHash("sha256").update(buffer).digest();
+
 const endpoint = "https://openapi.etsy.com/v3/";
 const client_id = process.env.ETSY_KEY_STRING;
 const clientVerifier = base64URLEncode(sha256(base64URLEncode(crypto.randomBytes(32))));
