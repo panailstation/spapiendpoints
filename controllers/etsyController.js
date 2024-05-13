@@ -7,7 +7,22 @@ const { response } = require("express");
 const endpoint = "https://openapi.etsy.com/v3/";
 const client_id = process.env.ETSY_KEY_STRING;
 const redirect_uri = `https://manageorders-inventory.onrender.com/api/etsy/oauth/redirect`;
-const redirect = generateCode({ client_id, redirect_uri });
+
+let cachedRedirect = null;
+
+const getRedirect = async () => {
+  if (!cachedRedirect) {
+    try {
+      cachedRedirect = await generateCode({ client_id, redirect_uri });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+  return cachedRedirect;
+};
+
+// const redirect = generateCode({ client_id, redirect_uri });
 
 
 const ping = async (req, res) => {
@@ -26,13 +41,19 @@ const ping = async (req, res) => {
 };
 
 const authenticate = async (req, res) => {
-  res.render("index", {
-    uri: redirect.url
-  });
+  try {
+    const redirect = await getRedirect();
+    res.render("index", {
+      uri: redirect.url
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error generating redirect", error });
+  }
 };
 
 const oAuth = async (req, res) => {
   try {
+    const redirect = await getRedirect();
     const authCode = req.query.code;
 
     const url = `https://api.etsy.com/v3/public/oauth/token`;
