@@ -5,6 +5,6 @@ const {
 } = require("../controllers/metroController");
 
 
-router.get('/', authenticate);
+router.get('/', authenticate); 
 
 module.exports = router; 

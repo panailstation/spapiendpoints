@@ -19,7 +19,7 @@ const generateCode = async ({client_id, redirect_uri}) => {
 
         return {
             url: `https://www.etsy.com/oauth/connect?response_type=code&redirect_uri=${redirect_uri}&scope=email_r&client_id=${client_id}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`,
-            codeChallenge: codeChallenge,
+            codeChallenge: codeVerifier,
         }
     } catch (error) {
         console.log(error)
