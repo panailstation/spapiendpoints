@@ -14,8 +14,9 @@ const {
   putListing,
   patchListing,
   deleteListing,
+  getInventory,
 } = require("../controllers/amzController");
-
+ 
 router.post("/auth", auth);
 router.get("/get-orders", getOrders);
 router.get("/get-order", getOrder); // a query "id" is required. e.g /get-order?id=302-3657553-1461165
@@ -29,5 +30,6 @@ router.get("/listing-items", getListingItems);
 router.put("/putListing", putListing);
 router.patch("/patchListing", patchListing);
 router.delete("/deleteListing", deleteListing);
+router.get("/get-inventory", getInventory);
 
 module.exports = router;

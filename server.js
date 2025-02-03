@@ -5,6 +5,7 @@ const cors = require("cors");
 const etsyRoute = require("./routes/etsyRoute");
 const amzRoute = require("./routes/amzRoute"); 
 const metroRoute = require("./routes/metroRoute"); 
+const fnskuRoute = require("./routes/fnskuRoute");
 const errorHandler = require("./middleWare/errorMiddleware");
 const cookieParser = require("cookie-parser");
 const hbs = require("hbs");
@@ -27,6 +28,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/etsy", etsyRoute);
 app.use("/api/amz", amzRoute);
 app.use("/api/metro", metroRoute); 
+app.use("/api/fnsku", fnskuRoute); 
 
 
 // Error Middleware

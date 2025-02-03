@@ -5,12 +5,22 @@ const { authenticate } = require("../utils/amz/auth");
 const { createFeedDocument, uploadFeed } = require("../utils/amz/feeds");
 const { shipmentData } = require("../utils/amz/shipmentData");
 const { listingData, patchListingData } = require("../utils/amz/listingData");
+const { writeToExcel } = require("../utils/amz/writeToExcel");
 
 const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
-const marketplaceIds = ["ATVPDKIKX0DER", "A1PA6795UKMFR9"] // This is used for the case of many ids. You can add as much as possible. 
+const marketplaceIds = [
+  "A13V1IB3VIYZZH",
+  "APJ6JRA9NG5V4",
+  "A1RKKUPIHCS9HS",
+  "AMEN7PMS3EDWL",
+  "A1PA6795UKMFR9",
+  "A1805IZSGTT6HS",
+  "A1F83G8C2ARO7P",
+  "A1C3SOZRARQ6R3",
+  "A2NODRKZP88ZB9",
+]; // This is used for the case of many ids. You can add as much as possible.
 const endpoint = "https://sellingpartnerapi-eu.amazon.com";
 const sku = "T5-TUY3-3FH8";
-
 
 const auth = async (req, res) => {
   try {
@@ -192,9 +202,7 @@ const purchaseLabel = async (req, res) => {
         });
       });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error purchasing label", error: error });
+    res.status(500).json({ message: "Error purchasing label", error: error });
   }
 };
 
@@ -304,20 +312,16 @@ const getListingItems = async (req, res) => {
 const putListing = async (req, res) => {
   try {
     const authTokens = await authenticate();
-    
+
     // TODO: Confirm url for put listing. DONE.
     const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
-      .put(
-        url,
-        listingData(marketplace_id),
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "x-amz-access-token": authTokens.access_token,
-          },
-        }
-      )
+      .put(url, listingData(marketplace_id), {
+        headers: {
+          "Content-Type": "application/json",
+          "x-amz-access-token": authTokens.access_token,
+        },
+      })
       .then((response) => {
         return res.status(200).json(response.data);
       })
@@ -338,16 +342,12 @@ const patchListing = async (req, res) => {
 
     const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
-      .patch(
-        url,
-        patchListingData(marketplace_id),
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "x-amz-access-token": authTokens.access_token,
-          },
-        }
-      )
+      .patch(url, patchListingData(marketplace_id), {
+        headers: {
+          "Content-Type": "application/json",
+          "x-amz-access-token": authTokens.access_token,
+        },
+      })
       .then((response) => {
         return res.status(200).json(response.data);
       })
@@ -368,15 +368,12 @@ const deleteListing = async (req, res) => {
 
     const url = `${endpoint}/listings/2021-08-01/items/${process.env.AMZ_SELLER_ID}/${sku}?marketplaceIds=${marketplace_id}&issueLocale=en_US`;
     await axios
-      .delete(
-        url,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "x-amz-access-token": authTokens.access_token,
-          },
-        }
-      )
+      .delete(url, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-amz-access-token": authTokens.access_token,
+        },
+      })
       .then((response) => {
         return res.status(200).json(response.data);
       })
@@ -388,6 +385,46 @@ const deleteListing = async (req, res) => {
       });
   } catch (error) {
     res.status(500).json({ message: "Error Deleting Listing", error: error });
+  }
+};
+
+const getInventory = async (req, res) => {
+  try {
+    const authTokens = await authenticate();
+    // Define the base URL
+    const baseUrl = `${endpoint}/fba/inventory/v1/summaries`;
+
+    // Define the query parameters
+    const queryParams = {
+      details: 'true',
+      granularityType: 'Marketplace',
+      granularityId: 'A13V1IB3VIYZZH',
+      marketplaceIds: 'A13V1IB3VIYZZH'
+    };
+
+    // Convert the query parameters to a URL-encoded string
+    const queryString = new URLSearchParams(queryParams).toString();
+
+    // Construct the full URL
+    const url = `${baseUrl}?${queryString}`;
+
+    console.log('Request URL:', url);
+
+    const response = await axios.get(url, {
+      headers: {
+        "x-amz-access-token": authTokens.access_token,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const inventoryData = response.data;
+
+    res.status(200).json(inventoryData);
+  } catch (error) {
+    // Log the error for debugging
+    console.error('Error getting inventory:', error.response ? error.response.data : error.message);
+
+    res.status(500).json({ message: "Error getting inventory", error: error });
   }
 };
 
@@ -405,6 +442,33 @@ module.exports = {
   putListing,
   patchListing,
   deleteListing,
+  getInventory,
 };
 
-
+// Ireland	A28R8C7NBKEWEA	IE
+// Spain	A1RKKUPIHCS9HS	ES
+// United Kingdom	A1F83G8C2ARO7P	UK
+// France	A13V1IB3VIYZZH	FR
+// Belgium	AMEN7PMS3EDWL	BE
+// Netherlands	A1805IZSGTT6HS	NL
+// Germany	A1PA6795UKMFR9	DE
+// Italy	APJ6JRA9NG5V4	IT
+// Sweden	A2NODRKZP88ZB9	SE
+// South Africa	AE08WJ6YKNBMC	ZA
+// Poland	A1C3SOZRARQ6R3	PL
+// Egypt	ARBP9OOSHTCHU	EG
+// Turkey	A33AVAJ2PDY3EV	TR
+// Saudi Arabia	A17E79C6D8DWNP	SA
+// United Arab Emirates	A2VIGQ35RCS4UG	AE
+// India	A21TJRUUN4KGV	IN
+// [
+//   'A13V1IB3VIYZZH',
+//   'APJ6JRA9NG5V4',
+//   'A1RKKUPIHCS9HS',
+//   'AMEN7PMS3EDWL',
+//   'A1PA6795UKMFR9',
+//   'A1805IZSGTT6HS',
+//   'A1F83G8C2ARO7P',
+//   'A1C3SOZRARQ6R3',
+//   'A2NODRKZP88ZB9'
+// ]

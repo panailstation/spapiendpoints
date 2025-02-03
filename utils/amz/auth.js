@@ -10,7 +10,7 @@ const authenticate = async () => {
             client_secret: process.env.SELLING_PARTNER_APP_CLIENT_SECRET,
         });
 
-        return response.data;
+        return response.data; 
     } catch (error) {
         console.error("Error fetching access token:", error.message);
     }
