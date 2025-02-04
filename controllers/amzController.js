@@ -424,7 +424,7 @@ const getInventory = async (req, res) => {
     // Construct the full URL
     const url = `${baseUrl}?${queryString}`;
 
-    // console.log("Request URL:", url);
+    // console.log("Request URL:", url); 
 
     const response = await axios.get(url, {
       headers: {
