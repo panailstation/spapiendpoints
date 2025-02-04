@@ -6,6 +6,7 @@ const { createFeedDocument, uploadFeed } = require("../utils/amz/feeds");
 const { shipmentData } = require("../utils/amz/shipmentData");
 const { listingData, patchListingData } = require("../utils/amz/listingData");
 const { writeToExcel } = require("../utils/amz/writeToExcel");
+const { google } = require("googleapis");
 
 const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
 const marketplaceIds = [
@@ -21,6 +22,18 @@ const marketplaceIds = [
 ]; // This is used for the case of many ids. You can add as much as possible.
 const endpoint = "https://sellingpartnerapi-eu.amazon.com";
 const sku = "T5-TUY3-3FH8";
+
+const marketplaceSheetMap = {
+  'A13V1IB3VIYZZH': 'Sheet1',
+  'APJ6JRA9NG5V4': 'Sheet2',
+  'A1RKKUPIHCS9HS': 'Sheet3',
+  'AMEN7PMS3EDWL': 'Sheet4',
+  'A1PA6795UKMFR9': 'Sheet5',
+  'A1805IZSGTT6HS': 'Sheet6',
+  'A1F83G8C2ARO7P': 'Sheet7',
+  'A1C3SOZRARQ6R3': 'Sheet8',
+  'A2NODRKZP88ZB9': 'Sheet9'  
+};
 
 const auth = async (req, res) => {
   try {
@@ -389,6 +402,10 @@ const deleteListing = async (req, res) => {
 };
 
 const getInventory = async (req, res) => {
+  const { marketplaceids } = req.query;
+
+  console.log("MarketPlaceId", marketplaceids);
+
   try {
     const authTokens = await authenticate();
     // Define the base URL
@@ -396,10 +413,10 @@ const getInventory = async (req, res) => {
 
     // Define the query parameters
     const queryParams = {
-      details: 'true',
-      granularityType: 'Marketplace',
-      granularityId: 'A13V1IB3VIYZZH',
-      marketplaceIds: 'A13V1IB3VIYZZH'
+      details: "true",
+      granularityType: "Marketplace",
+      granularityId: marketplaceids,
+      marketplaceIds: marketplaceids,
     };
 
     // Convert the query parameters to a URL-encoded string
@@ -408,7 +425,7 @@ const getInventory = async (req, res) => {
     // Construct the full URL
     const url = `${baseUrl}?${queryString}`;
 
-    console.log('Request URL:', url);
+    console.log("Request URL:", url);
 
     const response = await axios.get(url, {
       headers: {
@@ -417,16 +434,89 @@ const getInventory = async (req, res) => {
       },
     });
 
-    const inventoryData = response.data;
+    const inventoryData = response.data.payload.inventorySummaries;
+
+    // Authenticate with Google Sheets API
+    const auth = new google.auth.GoogleAuth({
+      keyFile: "credentials.json",
+      scopes: "https://www.googleapis.com/auth/spreadsheets",
+    });
+
+    const client = await auth.getClient();
+    const googleSheets = google.sheets({ version: "v4", auth: client });
+
+    // Determine the sheet name based on the marketplace ID
+    const sheetName = marketplaceSheetMap[marketplaceids];
+
+    console.log("sheet name:", sheetName)
+
+    if (!sheetName) {
+      return res.status(400).json({ message: "Invalid marketplace ID" });
+    }
+
+    // Prepare the data to be appended
+    const values = inventoryData.map((item) => [
+      item.asin,
+      item.productName,
+      item.fnSku,
+      item.sellerSku,
+      item.inventoryDetails.fulfillableQuantity,
+      item.inventoryDetails.inboundWorkingQuantity,
+      item.inventoryDetails.inboundShippedQuantity,
+      item.inventoryDetails.inboundReceivingQuantity,
+      item.inventoryDetails.reservedQuantity.totalReservedQuantity,
+      item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
+      item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
+      item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
+      item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
+      item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+        (q) => q.name === "researchingQuantityInShortTerm"
+      )?.quantity || 0,
+      item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+        (q) => q.name === "researchingQuantityInMidTerm"
+      )?.quantity || 0,
+      item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
+      item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
+      item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
+      item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
+      item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
+      item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
+      item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
+      item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
+      item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
+    ]);
+
+    const spreadsheetId = "1dpa46HwzoFUGhTOerB6MsRV1c_1lX2ggHpLBy-2UQmU";
+
+    // Clear the sheet content starting from the third row
+    await googleSheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${sheetName}!A3:Z`,
+    });
+
+    // Write row(s) to spreadsheet starting from the third row
+    await googleSheets.spreadsheets.values.append({
+      auth,
+      spreadsheetId,
+      range: `${sheetName}!A3`,
+      valueInputOption: "RAW",
+      resource: {
+        values,
+      },
+    });
 
     res.status(200).json(inventoryData);
   } catch (error) {
     // Log the error for debugging
-    console.error('Error getting inventory:', error.response ? error.response.data : error.message);
+    console.error(
+      "Error getting inventory:",
+      error.response ? error.response.data : error.message
+    );
 
     res.status(500).json({ message: "Error getting inventory", error: error });
   }
 };
+
 
 module.exports = {
   auth,
@@ -461,6 +551,7 @@ module.exports = {
 // Saudi Arabia	A17E79C6D8DWNP	SA
 // United Arab Emirates	A2VIGQ35RCS4UG	AE
 // India	A21TJRUUN4KGV	IN
+
 // [
 //   'A13V1IB3VIYZZH',
 //   'APJ6JRA9NG5V4',
@@ -472,3 +563,5 @@ module.exports = {
 //   'A1C3SOZRARQ6R3',
 //   'A2NODRKZP88ZB9'
 // ]
+
+// spapisheets@sp-api-sheets.iam.gserviceaccount.com
