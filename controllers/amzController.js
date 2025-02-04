@@ -400,6 +400,125 @@ const deleteListing = async (req, res) => {
   }
 };
 
+// const getInventory = async (req, res) => {
+//   const { marketplaceids } = req.query;
+
+//   console.log("MarketPlaceId", marketplaceids);
+
+//   try {
+//     const authTokens = await authenticate();
+//     // Define the base URL
+//     const baseUrl = `${endpoint}/fba/inventory/v1/summaries`;
+
+//     // Define the query parameters
+//     const queryParams = {
+//       details: "true",
+//       granularityType: "Marketplace",
+//       granularityId: marketplaceids,
+//       marketplaceIds: marketplaceids,
+//     };
+
+//     // Convert the query parameters to a URL-encoded string
+//     const queryString = new URLSearchParams(queryParams).toString();
+
+//     // Construct the full URL
+//     const url = `${baseUrl}?${queryString}`;
+
+//     // console.log("Request URL:", url); 
+
+//     const response = await axios.get(url, {
+//       headers: {
+//         "x-amz-access-token": authTokens.access_token,
+//         "Content-Type": "application/json",
+//       },
+//     });
+
+//     const inventoryData = response.data.payload.inventorySummaries;
+
+//     // Authenticate with Google Sheets API
+//     const auth = new google.auth.GoogleAuth({
+//       credentials: {
+//         client_email: process.env.GOOGLE_CLIENT_EMAIL,
+//         private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+//       },
+//       scopes: "https://www.googleapis.com/auth/spreadsheets",
+//     });
+
+//     const client = await auth.getClient();
+//     const googleSheets = google.sheets({ version: "v4", auth: client });
+
+//     // Determine the sheet name based on the marketplace ID
+//     const sheetName = marketplaceSheetMap[marketplaceids];
+
+//     console.log("sheet name:", sheetName)
+
+//     if (!sheetName) {
+//       return res.status(400).json({ message: "Invalid marketplace ID" });
+//     }
+
+//     // Prepare the data to be appended
+//     const values = inventoryData.map((item) => [
+//       item.asin,
+//       item.productName,
+//       item.fnSku,
+//       item.sellerSku,
+//       item.inventoryDetails.fulfillableQuantity,
+//       item.inventoryDetails.inboundWorkingQuantity,
+//       item.inventoryDetails.inboundShippedQuantity,
+//       item.inventoryDetails.inboundReceivingQuantity,
+//       item.inventoryDetails.reservedQuantity.totalReservedQuantity,
+//       item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
+//       item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
+//       item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
+//       item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
+//       item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+//         (q) => q.name === "researchingQuantityInShortTerm"
+//       )?.quantity || 0,
+//       item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+//         (q) => q.name === "researchingQuantityInMidTerm"
+//       )?.quantity || 0,
+//       item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
+//       item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
+//       item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
+//       item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
+//     ]);
+
+//     const spreadsheetId = process.env.SPREAD_SHEETS_ID;
+
+//     // Clear the sheet content starting from the third row
+//     await googleSheets.spreadsheets.values.clear({
+//       spreadsheetId,
+//       range: `${sheetName}!A3:Z`,
+//     });
+
+//     // Write row(s) to spreadsheet starting from the third row
+//     await googleSheets.spreadsheets.values.append({
+//       auth,
+//       spreadsheetId,
+//       range: `${sheetName}!A3`,
+//       valueInputOption: "RAW",
+//       resource: {
+//         values,
+//       },
+//     });
+
+//     res.status(200).json(inventoryData);
+//   } catch (error) {
+//     // Log the error for debugging
+//     console.error(
+//       "Error getting inventory:",
+//       error.response ? error.response.data : error.message
+//     );
+
+//     res.status(500).json({ message: "Error getting inventory", error: error });
+//   }
+// };
+
 const getInventory = async (req, res) => {
   const { marketplaceids } = req.query;
 
@@ -407,10 +526,8 @@ const getInventory = async (req, res) => {
 
   try {
     const authTokens = await authenticate();
-    // Define the base URL
     const baseUrl = `${endpoint}/fba/inventory/v1/summaries`;
 
-    // Define the query parameters
     const queryParams = {
       details: "true",
       granularityType: "Marketplace",
@@ -418,13 +535,8 @@ const getInventory = async (req, res) => {
       marketplaceIds: marketplaceids,
     };
 
-    // Convert the query parameters to a URL-encoded string
     const queryString = new URLSearchParams(queryParams).toString();
-
-    // Construct the full URL
     const url = `${baseUrl}?${queryString}`;
-
-    // console.log("Request URL:", url); 
 
     const response = await axios.get(url, {
       headers: {
@@ -435,86 +547,40 @@ const getInventory = async (req, res) => {
 
     const inventoryData = response.data.payload.inventorySummaries;
 
-    // Authenticate with Google Sheets API
-    const auth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      },
-      scopes: "https://www.googleapis.com/auth/spreadsheets",
-    });
-
-    const client = await auth.getClient();
-    const googleSheets = google.sheets({ version: "v4", auth: client });
-
-    // Determine the sheet name based on the marketplace ID
-    const sheetName = marketplaceSheetMap[marketplaceids];
-
-    console.log("sheet name:", sheetName)
-
-    if (!sheetName) {
-      return res.status(400).json({ message: "Invalid marketplace ID" });
-    }
-
-    // Prepare the data to be appended
-    const values = inventoryData.map((item) => [
-      item.asin,
-      item.productName,
-      item.fnSku,
-      item.sellerSku,
-      item.inventoryDetails.fulfillableQuantity,
-      item.inventoryDetails.inboundWorkingQuantity,
-      item.inventoryDetails.inboundShippedQuantity,
-      item.inventoryDetails.inboundReceivingQuantity,
-      item.inventoryDetails.reservedQuantity.totalReservedQuantity,
-      item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
-      item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
-      item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
-      item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
-      item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+    const values = inventoryData.map((item) => ({
+      ASIN: item.asin,
+      productName: item.productName,
+      fnsku: item.fnSku,
+      sellersku: item.sellerSku,
+      fulfillableQuantity: item.inventoryDetails.fulfillableQuantity,
+      inboundWorkingQuantity: item.inventoryDetails.inboundWorkingQuantity,
+      inboundShippedQuantity: item.inventoryDetails.inboundShippedQuantity,
+      inboundReceivingQuantity: item.inventoryDetails.inboundReceivingQuantity,
+      totalReservedQuantity: item.inventoryDetails.reservedQuantity.totalReservedQuantity,
+      pendingCustomerOrderQuantity: item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
+      pendingTransshipmentQuantity: item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
+      fcProcessingQuantity: item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
+      totalResearchingQuantity: item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
+      researchingQuantityInShortTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
         (q) => q.name === "researchingQuantityInShortTerm"
       )?.quantity || 0,
-      item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+      researchingQuantityInMidTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
         (q) => q.name === "researchingQuantityInMidTerm"
       )?.quantity || 0,
-      item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
-      item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
-      item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
-      item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
-      item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
-      item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
-      item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
-      item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
-      item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
-    ]);
+      totalUnfulfillableQuantity: item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
+      customerDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
+      warehouseDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
+      distributorDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
+      carrierDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
+      defectiveQuantity: item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
+      expiredQuantity: item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
+      reservedFutureSupplyQuantity: item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
+      futureSupplyBuyableQuantity: item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
+    }));
 
-    const spreadsheetId = process.env.SPREAD_SHEETS_ID;
-
-    // Clear the sheet content starting from the third row
-    await googleSheets.spreadsheets.values.clear({
-      spreadsheetId,
-      range: `${sheetName}!A3:Z`,
-    });
-
-    // Write row(s) to spreadsheet starting from the third row
-    await googleSheets.spreadsheets.values.append({
-      auth,
-      spreadsheetId,
-      range: `${sheetName}!A3`,
-      valueInputOption: "RAW",
-      resource: {
-        values,
-      },
-    });
-
-    res.status(200).json(inventoryData);
+    res.status(200).json(values);
   } catch (error) {
-    // Log the error for debugging
-    console.error(
-      "Error getting inventory:",
-      error.response ? error.response.data : error.message
-    );
-
+    console.error("Error getting inventory:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Error getting inventory", error: error });
   }
 };
