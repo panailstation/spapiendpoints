@@ -488,7 +488,7 @@ const getInventory = async (req, res) => {
       item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
     ]);
 
-    const spreadsheetId = "1dpa46HwzoFUGhTOerB6MsRV1c_1lX2ggHpLBy-2UQmU";
+    const spreadsheetId = process.env.SPREAD_SHEETS_ID;
 
     // Clear the sheet content starting from the third row
     await googleSheets.spreadsheets.values.clear({
