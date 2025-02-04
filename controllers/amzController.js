@@ -5,7 +5,6 @@ const { authenticate } = require("../utils/amz/auth");
 const { createFeedDocument, uploadFeed } = require("../utils/amz/feeds");
 const { shipmentData } = require("../utils/amz/shipmentData");
 const { listingData, patchListingData } = require("../utils/amz/listingData");
-const { writeToExcel } = require("../utils/amz/writeToExcel");
 const { google } = require("googleapis");
 
 const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
@@ -438,7 +437,10 @@ const getInventory = async (req, res) => {
 
     // Authenticate with Google Sheets API
     const auth = new google.auth.GoogleAuth({
-      keyFile: "credentials.json",
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
       scopes: "https://www.googleapis.com/auth/spreadsheets",
     });
 
