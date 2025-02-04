@@ -424,7 +424,7 @@ const getInventory = async (req, res) => {
     // Construct the full URL
     const url = `${baseUrl}?${queryString}`;
 
-    console.log("Request URL:", url);
+    // console.log("Request URL:", url);
 
     const response = await axios.get(url, {
       headers: {
@@ -537,23 +537,6 @@ module.exports = {
   getInventory,
 };
 
-// Ireland	A28R8C7NBKEWEA	IE
-// Spain	A1RKKUPIHCS9HS	ES
-// United Kingdom	A1F83G8C2ARO7P	UK
-// France	A13V1IB3VIYZZH	FR
-// Belgium	AMEN7PMS3EDWL	BE
-// Netherlands	A1805IZSGTT6HS	NL
-// Germany	A1PA6795UKMFR9	DE
-// Italy	APJ6JRA9NG5V4	IT
-// Sweden	A2NODRKZP88ZB9	SE
-// South Africa	AE08WJ6YKNBMC	ZA
-// Poland	A1C3SOZRARQ6R3	PL
-// Egypt	ARBP9OOSHTCHU	EG
-// Turkey	A33AVAJ2PDY3EV	TR
-// Saudi Arabia	A17E79C6D8DWNP	SA
-// United Arab Emirates	A2VIGQ35RCS4UG	AE
-// India	A21TJRUUN4KGV	IN
-
 // [
 //   'A13V1IB3VIYZZH',
 //   'APJ6JRA9NG5V4',
@@ -565,5 +548,3 @@ module.exports = {
 //   'A1C3SOZRARQ6R3',
 //   'A2NODRKZP88ZB9'
 // ]
-
-// spapisheets@sp-api-sheets.iam.gserviceaccount.com
