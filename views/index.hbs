@@ -1,12 +1,87 @@
-<html>
-
-  <body>
-    <a
-      href="{{{uri}}}"
-    >
-      Authenticate with Etsy
-    </a>
-    {{{data}}}
-  </body>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Data</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Inventory Data</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ASIN</th>
+        <th>Product Name</th>
+        <th>FNSKU</th>
+        <th>Seller SKU</th>
+        <th>Fulfillable Quantity</th>
+        <th>Inbound Working Quantity</th>
+        <th>Inbound Shipped Quantity</th>
+        <th>Inbound Receiving Quantity</th>
+        <th>Total Reserved Quantity</th>
+        <th>Pending Customer Order Quantity</th>
+        <th>Pending Transshipment Quantity</th>
+        <th>FC Processing Quantity</th>
+        <th>Total Researching Quantity</th>
+        <th>Researching Quantity In Short Term</th>
+        <th>Researching Quantity In Mid Term</th>
+        <th>Total Unfulfillable Quantity</th>
+        <th>Customer Damaged Quantity</th>
+        <th>Warehouse Damaged Quantity</th>
+        <th>Distributor Damaged Quantity</th>
+        <th>Carrier Damaged Quantity</th>
+        <th>Defective Quantity</th>
+        <th>Expired Quantity</th>
+        <th>Reserved Future Supply Quantity</th>
+        <th>Future Supply Buyable Quantity</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each values}}
+      <tr>
+        <td>{{this.ASIN}}</td>
+        <td>{{this.productName}}</td>
+        <td>{{this.fnsku}}</td>
+        <td>{{this.sellersku}}</td>
+        <td>{{this.fulfillableQuantity}}</td>
+        <td>{{this.inboundWorkingQuantity}}</td>
+        <td>{{this.inboundShippedQuantity}}</td>
+        <td>{{this.inboundReceivingQuantity}}</td>
+        <td>{{this.totalReservedQuantity}}</td>
+        <td>{{this.pendingCustomerOrderQuantity}}</td>
+        <td>{{this.pendingTransshipmentQuantity}}</td>
+        <td>{{this.fcProcessingQuantity}}</td>
+        <td>{{this.totalResearchingQuantity}}</td>
+        <td>{{this.researchingQuantityInShortTerm}}</td>
+        <td>{{this.researchingQuantityInMidTerm}}</td>
+        <td>{{this.totalUnfulfillableQuantity}}</td>
+        <td>{{this.customerDamagedQuantity}}</td>
+        <td>{{this.warehouseDamagedQuantity}}</td>
+        <td>{{this.distributorDamagedQuantity}}</td>
+        <td>{{this.carrierDamagedQuantity}}</td>
+        <td>{{this.defectiveQuantity}}</td>
+        <td>{{this.expiredQuantity}}</td>
+        <td>{{this.reservedFutureSupplyQuantity}}</td>
+        <td>{{this.futureSupplyBuyableQuantity}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</body>
 </html>

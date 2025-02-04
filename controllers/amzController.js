@@ -578,7 +578,10 @@ const getInventory = async (req, res) => {
       futureSupplyBuyableQuantity: item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
     }));
 
-    res.status(200).json(values);
+    // res.status(200).json(values);
+    res.render("index", {
+      values,
+    });
   } catch (error) {
     console.error("Error getting inventory:", error.response ? error.response.data : error.message);
     res.status(500).json({ message: "Error getting inventory", error: error });
