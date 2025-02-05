@@ -505,8 +505,10 @@ const getInventory = async (req, res) => {
       const inventoryData = response.data.payload.inventorySummaries;
       allInventoryData = allInventoryData.concat(inventoryData);
 
-      nextToken = response.data.payload.nextToken || null;
+      nextToken = response.data.pagination.nextToken || null;
     } while (nextToken);
+
+    console.log(nextToken)
 
     const values = allInventoryData.map((item) => ({
       ASIN: item.asin,
