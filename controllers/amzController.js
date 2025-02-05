@@ -23,15 +23,15 @@ const endpoint = "https://sellingpartnerapi-eu.amazon.com";
 const sku = "T5-TUY3-3FH8";
 
 const marketplaceSheetMap = {
-  'A13V1IB3VIYZZH': 'Sheet1',
-  'APJ6JRA9NG5V4': 'Sheet2',
-  'A1RKKUPIHCS9HS': 'Sheet3',
-  'AMEN7PMS3EDWL': 'Sheet4',
-  'A1PA6795UKMFR9': 'Sheet5',
-  'A1805IZSGTT6HS': 'Sheet6',
-  'A1F83G8C2ARO7P': 'Sheet7',
-  'A1C3SOZRARQ6R3': 'Sheet8',
-  'A2NODRKZP88ZB9': 'Sheet9'  
+  A13V1IB3VIYZZH: "Sheet1",
+  APJ6JRA9NG5V4: "Sheet2",
+  A1RKKUPIHCS9HS: "Sheet3",
+  AMEN7PMS3EDWL: "Sheet4",
+  A1PA6795UKMFR9: "Sheet5",
+  A1805IZSGTT6HS: "Sheet6",
+  A1F83G8C2ARO7P: "Sheet7",
+  A1C3SOZRARQ6R3: "Sheet8",
+  A2NODRKZP88ZB9: "Sheet9",
 };
 
 const auth = async (req, res) => {
@@ -462,7 +462,7 @@ const deleteListing = async (req, res) => {
 //     res.status(200).json(values);
 //     // res.render("index", {
 //     //   values,
-//     // }); 
+//     // });
 //   } catch (error) {
 //     console.error("Error getting inventory:", error.response ? error.response.data : error.message);
 //     res.status(500).json({ message: "Error getting inventory", error: error });
@@ -478,37 +478,61 @@ const getInventory = async (req, res) => {
     const baseUrl = `${endpoint}/fba/inventory/v1/summaries`;
 
     const queryParams = {
-      details: 'true',
-      granularityType: 'Marketplace',
+      details: "true",
+      granularityType: "Marketplace",
       granularityId: marketplaceids,
       marketplaceIds: marketplaceids,
     };
 
     let allInventoryData = [];
     let nextToken = null;
+    let retryCount = 0;
+    const maxRetries = 5;
 
     do {
       if (nextToken) {
         queryParams.nextToken = nextToken;
+      } else {
+        delete queryParams.nextToken; // Ensure it's removed on the first request
       }
 
       const queryString = new URLSearchParams(queryParams).toString();
       const url = `${baseUrl}?${queryString}`;
 
-      const response = await axios.get(url, {
-        headers: {
-          'x-amz-access-token': authTokens.access_token,
-          'Content-Type': 'application/json',
-        },
-      });
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            "x-amz-access-token": authTokens.access_token,
+            "Content-Type": "application/json",
+          },
+        });
 
-      const inventoryData = response.data.payload.inventorySummaries;
-      allInventoryData = allInventoryData.concat(inventoryData);
+        const inventoryData = response.data.payload.inventorySummaries || [];
+        allInventoryData = allInventoryData.concat(inventoryData);
 
-      nextToken = response.data.pagination.nextToken || null;
-    } while (nextToken);
+        // Ensure nextToken exists and is valid before continuing
+        nextToken = response.data.pagination?.nextToken?.trim() || null;
 
-    console.log(nextToken)
+        retryCount = 0; // Reset retry count on successful request
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw new Error("Max retries exceeded");
+          }
+          const retryAfter =
+            error.response.headers["retry-after"] || Math.pow(2, retryCount);
+          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000)
+          );
+        } else {
+          throw error;
+        }
+      }
+    } while (nextToken && nextToken !== "null");
+
+    console.log("Final nextToken:", nextToken);
 
     const values = allInventoryData.map((item) => ({
       ASIN: item.asin,
@@ -519,38 +543,53 @@ const getInventory = async (req, res) => {
       inboundWorkingQuantity: item.inventoryDetails.inboundWorkingQuantity,
       inboundShippedQuantity: item.inventoryDetails.inboundShippedQuantity,
       inboundReceivingQuantity: item.inventoryDetails.inboundReceivingQuantity,
-      totalReservedQuantity: item.inventoryDetails.reservedQuantity.totalReservedQuantity,
-      pendingCustomerOrderQuantity: item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
-      pendingTransshipmentQuantity: item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
-      fcProcessingQuantity: item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
-      totalResearchingQuantity: item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
-      researchingQuantityInShortTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
-        (q) => q.name === 'researchingQuantityInShortTerm'
-      )?.quantity || 0,
-      researchingQuantityInMidTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
-        (q) => q.name === 'researchingQuantityInMidTerm'
-      )?.quantity || 0,
-      totalUnfulfillableQuantity: item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
-      customerDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
-      warehouseDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
-      distributorDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
-      carrierDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
-      defectiveQuantity: item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
-      expiredQuantity: item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
-      reservedFutureSupplyQuantity: item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
-      futureSupplyBuyableQuantity: item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
+      totalReservedQuantity:
+        item.inventoryDetails.reservedQuantity.totalReservedQuantity,
+      pendingCustomerOrderQuantity:
+        item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
+      pendingTransshipmentQuantity:
+        item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
+      fcProcessingQuantity:
+        item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
+      totalResearchingQuantity:
+        item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
+      researchingQuantityInShortTerm:
+        item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+          (q) => q.name === "researchingQuantityInShortTerm"
+        )?.quantity || 0,
+      researchingQuantityInMidTerm:
+        item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
+          (q) => q.name === "researchingQuantityInMidTerm"
+        )?.quantity || 0,
+      totalUnfulfillableQuantity:
+        item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
+      customerDamagedQuantity:
+        item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
+      warehouseDamagedQuantity:
+        item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
+      distributorDamagedQuantity:
+        item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
+      carrierDamagedQuantity:
+        item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
+      defectiveQuantity:
+        item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
+      expiredQuantity:
+        item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
+      reservedFutureSupplyQuantity:
+        item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
+      futureSupplyBuyableQuantity:
+        item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
     }));
 
     res.status(200).json(values);
-    // res.render("index", {
-    //   values,
-    // });
   } catch (error) {
-    console.error('Error getting inventory:', error.response ? error.response.data : error.message);
-    res.status(500).json({ message: 'Error getting inventory', error: error });
+    console.error(
+      "Error getting inventory:",
+      error.response ? error.response.data : error.message
+    );
+    res.status(500).json({ message: "Error getting inventory", error: error });
   }
 };
-
 
 module.exports = {
   auth,
