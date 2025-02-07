@@ -50,21 +50,119 @@ const auth = async (req, res) => {
   }
 };
 
+// const getOrders = async (req, res) => {
+//   try {
+//     const createdAfter = moment().subtract(30, "days").toISOString();
+
+//     const authTokens = await authenticate();
+
+//     const url = `${endpoint}/orders/v0/orders?MarketplaceIds=${marketplace_id}&CreatedAfter=${createdAfter}&MaxResultPerPage=2`;
+//     const response = await axios.get(url, {
+//       headers: {
+//         "x-amz-access-token": authTokens.access_token,
+//         "Content-Type": "application/json",
+//       },
+//     });
+
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error getting orders", error: error });
+//   }
+// };
+
 const getOrders = async (req, res) => {
   try {
     const createdAfter = moment().subtract(30, "days").toISOString();
-
     const authTokens = await authenticate();
+    const baseUrl = `${endpoint}/orders/v0/orders`;
 
-    const url = `${endpoint}/orders/v0/orders?MarketplaceIds=${marketplace_id}&CreatedAfter=${createdAfter}&MaxResultPerPage=2`;
-    const response = await axios.get(url, {
-      headers: {
-        "x-amz-access-token": authTokens.access_token,
-        "Content-Type": "application/json",
-      },
-    });
+    const queryParams = {
+      MarketplaceIds: marketplace_id,
+      CreatedAfter: createdAfter,
+      MaxResultsPerPage: 100, // Adjust the number of results per page as needed
+    };
 
-    res.status(200).json(response.data);
+    let allOrders = [];
+    let nextToken = null;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    do {
+      if (nextToken) {
+        queryParams.NextToken = nextToken;
+      } else {
+        delete queryParams.NextToken; // Ensure it's removed on the first request
+      }
+
+      const queryString = new URLSearchParams(queryParams).toString();
+      const url = `${baseUrl}?${queryString}`;
+
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            "x-amz-access-token": authTokens.access_token,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const ordersData = response.data.payload.Orders || [];
+        allOrders = allOrders.concat(ordersData);
+
+        // Ensure nextToken exists and is valid before continuing
+        nextToken = response.data.nextToken?.trim() || null;
+
+        retryCount = 0; // Reset retry count on successful request
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw new Error("Max retries exceeded");
+          }
+          const retryAfter =
+            error.response.headers["retry-after"] || Math.pow(2, retryCount);
+          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000)
+          );
+        } else {
+          throw error;
+        }
+      }
+    } while (nextToken && nextToken !== "null");
+
+    const values = allOrders.map((order) => ({
+      BuyerInfo: order.BuyerInfo,
+      AmazonOrderId: order.AmazonOrderId,
+      EarliestShipDate: order.EarliestShipDate,
+      SalesChannel: order.SalesChannel,
+      OrderStatus: order.OrderStatus,
+      NumberOfItemsShipped: order.NumberOfItemsShipped,
+      OrderType: order.OrderType,
+      IsPremiumOrder: order.IsPremiumOrder,
+      IsPrime: order.IsPrime,
+      FulfillmentChannel: order.FulfillmentChannel,
+      NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
+      HasRegulatedItems: order.HasRegulatedItems,
+      IsReplacementOrder: order.IsReplacementOrder,
+      IsSoldByAB: order.IsSoldByAB,
+      LatestShipDate: order.LatestShipDate,
+      ShipServiceLevel: order.ShipServiceLevel,
+      IsISPU: order.IsISPU,
+      MarketplaceId: order.MarketplaceId,
+      PurchaseDate: order.PurchaseDate,
+      ShippingAddress: order.ShippingAddress,
+      IsAccessPointOrder: order.IsAccessPointOrder,
+      SellerOrderId: order.SellerOrderId,
+      PaymentMethod: order.PaymentMethod,
+      IsBusinessOrder: order.IsBusinessOrder,
+      OrderTotal: order.OrderTotal,
+      PaymentMethodDetails: order.PaymentMethodDetails,
+      IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
+      LastUpdateDate: order.LastUpdateDate,
+      ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
+    }));
+
+    res.status(200).json(values);
   } catch (error) {
     res.status(500).json({ message: "Error getting orders", error: error });
   }
@@ -399,75 +497,6 @@ const deleteListing = async (req, res) => {
     res.status(500).json({ message: "Error Deleting Listing", error: error });
   }
 };
-
-// const getInventory = async (req, res) => {
-//   const { marketplaceids } = req.query;
-
-//   console.log("MarketPlaceId", marketplaceids);
-
-//   try {
-//     const authTokens = await authenticate();
-//     const baseUrl = `${endpoint}/fba/inventory/v1/summaries`;
-
-//     const queryParams = {
-//       details: "true",
-//       granularityType: "Marketplace",
-//       granularityId: marketplaceids,
-//       marketplaceIds: marketplaceids,
-//     };
-
-//     const queryString = new URLSearchParams(queryParams).toString();
-//     const url = `${baseUrl}?${queryString}`;
-
-//     const response = await axios.get(url, {
-//       headers: {
-//         "x-amz-access-token": authTokens.access_token,
-//         "Content-Type": "application/json",
-//       },
-//     });
-
-//     const inventoryData = response.data.payload.inventorySummaries;
-
-//     const values = inventoryData.map((item) => ({
-//       ASIN: item.asin,
-//       productName: item.productName,
-//       fnsku: item.fnSku,
-//       sellersku: item.sellerSku,
-//       fulfillableQuantity: item.inventoryDetails.fulfillableQuantity,
-//       inboundWorkingQuantity: item.inventoryDetails.inboundWorkingQuantity,
-//       inboundShippedQuantity: item.inventoryDetails.inboundShippedQuantity,
-//       inboundReceivingQuantity: item.inventoryDetails.inboundReceivingQuantity,
-//       totalReservedQuantity: item.inventoryDetails.reservedQuantity.totalReservedQuantity,
-//       pendingCustomerOrderQuantity: item.inventoryDetails.reservedQuantity.pendingCustomerOrderQuantity,
-//       pendingTransshipmentQuantity: item.inventoryDetails.reservedQuantity.pendingTransshipmentQuantity,
-//       fcProcessingQuantity: item.inventoryDetails.reservedQuantity.fcProcessingQuantity,
-//       totalResearchingQuantity: item.inventoryDetails.researchingQuantity.totalResearchingQuantity,
-//       researchingQuantityInShortTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
-//         (q) => q.name === "researchingQuantityInShortTerm"
-//       )?.quantity || 0,
-//       researchingQuantityInMidTerm: item.inventoryDetails.researchingQuantity.researchingQuantityBreakdown.find(
-//         (q) => q.name === "researchingQuantityInMidTerm"
-//       )?.quantity || 0,
-//       totalUnfulfillableQuantity: item.inventoryDetails.unfulfillableQuantity.totalUnfulfillableQuantity,
-//       customerDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.customerDamagedQuantity,
-//       warehouseDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.warehouseDamagedQuantity,
-//       distributorDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.distributorDamagedQuantity,
-//       carrierDamagedQuantity: item.inventoryDetails.unfulfillableQuantity.carrierDamagedQuantity,
-//       defectiveQuantity: item.inventoryDetails.unfulfillableQuantity.defectiveQuantity,
-//       expiredQuantity: item.inventoryDetails.unfulfillableQuantity.expiredQuantity,
-//       reservedFutureSupplyQuantity: item.inventoryDetails.futureSupplyQuantity.reservedFutureSupplyQuantity,
-//       futureSupplyBuyableQuantity: item.inventoryDetails.futureSupplyQuantity.futureSupplyBuyableQuantity,
-//     }));
-
-//     res.status(200).json(values);
-//     // res.render("index", {
-//     //   values,
-//     // });
-//   } catch (error) {
-//     console.error("Error getting inventory:", error.response ? error.response.data : error.message);
-//     res.status(500).json({ message: "Error getting inventory", error: error });
-//   }
-// };
 
 const getInventory = async (req, res) => {
   const { marketplaceids } = req.query;
