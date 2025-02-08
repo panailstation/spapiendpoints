@@ -50,29 +50,10 @@ const auth = async (req, res) => {
   }
 };
 
-// const getOrders = async (req, res) => {
-//   try {
-//     const createdAfter = moment().subtract(30, "days").toISOString();
-
-//     const authTokens = await authenticate();
-
-//     const url = `${endpoint}/orders/v0/orders?MarketplaceIds=${marketplace_id}&CreatedAfter=${createdAfter}&MaxResultPerPage=2`;
-//     const response = await axios.get(url, {
-//       headers: {
-//         "x-amz-access-token": authTokens.access_token,
-//         "Content-Type": "application/json",
-//       },
-//     });
-
-//     res.status(200).json(response.data);
-//   } catch (error) {
-//     res.status(500).json({ message: "Error getting orders", error: error });
-//   }
-// };
-
 const getOrders = async (req, res) => {
   try {
-    const createdAfter = moment().subtract(30, "days").toISOString();
+    // const createdAfter = moment().subtract(30, "days").toISOString();
+    const createdAfter = "2023-01-01T00:00:00Z";
     const authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
@@ -109,7 +90,7 @@ const getOrders = async (req, res) => {
         allOrders = allOrders.concat(ordersData);
 
         // Ensure nextToken exists and is valid before continuing
-        nextToken = response.data.nextToken?.trim() || null;
+        nextToken = response.data.payload.NextToken?.trim() || null;
 
         retryCount = 0; // Reset retry count on successful request
       } catch (error) {
@@ -174,7 +155,7 @@ const getOrder = async (req, res) => {
 
     const orderId = req.query.id;
 
-    const url = `${endpoint}/orders/v0/orders/${orderId}/`;
+    const url = `${endpoint}/orders/v0/orders/${orderId}/orderItems/buyerInfo`;
     const response = await axios.get(url, {
       headers: {
         "x-amz-access-token": authTokens.access_token,
