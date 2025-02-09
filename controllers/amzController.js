@@ -152,7 +152,6 @@ const auth = async (req, res) => {
 const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
 
-  console.log("markeplaceId", marketplaceids)
   try {
     const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
@@ -167,7 +166,7 @@ const getOrders = async (req, res) => {
     let allOrders = [];
     let nextToken = null;
     let retryCount = 0;
-    const maxRetries = 10;
+    const maxRetries = 5;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -200,25 +199,21 @@ const getOrders = async (req, res) => {
       } catch (error) {
         if (error.response) {
           const { status, data, headers } = error.response;
-          console.error(
-            `Error response: Status: ${status}, Data: ${JSON.stringify(
-              data
-            )}, Headers: ${JSON.stringify(headers)}`
-          );
+          console.error(`Error response: Status: ${status}, Data: ${JSON.stringify(data)}, Headers: ${JSON.stringify(headers)}`);
           if (status === 429) {
             retryCount++;
             if (retryCount > maxRetries) {
               throw new Error("Max retries exceeded");
             }
-            const retryAfter =
-              headers["retry-after"] || Math.pow(2, retryCount);
+            const retryAfter = headers["retry-after"] ? parseInt(headers["retry-after"], 10) : Math.pow(2, retryCount);
             const jitter = Math.random() * 1000; // Add jitter to avoid thundering herd
-            console.warn(
-              `Rate limited. Retrying after ${
-                retryAfter + jitter
-              } milliseconds...`
-            );
-            await sleep(retryAfter * 1000 + jitter);
+            const delay = retryAfter * 1000 + jitter;
+            console.warn(`Rate limited. Retrying after ${delay} milliseconds...`);
+            await sleep(delay);
+          } else if (data.errors && data.errors[0].code === "QuotaExceeded") {
+            const quotaResetTime = 6000; // 1 minute in milliseconds
+            console.warn(`Quota exceeded. Retrying after ${quotaResetTime} milliseconds...`);
+            await sleep(quotaResetTime);
           } else {
             throw error;
           }
@@ -264,9 +259,7 @@ const getOrders = async (req, res) => {
     res.status(200).json(values);
   } catch (error) {
     console.error(`Error getting orders: ${error.message}`);
-    res
-      .status(500)
-      .json({ message: "Error getting orders", error: error.message });
+    res.status(500).json({ message: "Error getting orders", error: error.message });
   }
 };
 
