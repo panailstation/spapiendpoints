@@ -7,7 +7,7 @@ const { shipmentData } = require("../utils/amz/shipmentData");
 const { listingData, patchListingData } = require("../utils/amz/listingData");
 const { google } = require("googleapis");
 
-const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
+// const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
 const marketplaceIds = [
   "A13V1IB3VIYZZH",
   "APJ6JRA9NG5V4",
@@ -50,15 +50,116 @@ const auth = async (req, res) => {
   }
 };
 
+// const getOrders = async (req, res) => {
+//   try {
+//     // const createdAfter = moment().subtract(30, "days").toISOString();
+//     const createdAfter = "2023-01-01T00:00:00Z";
+//     const authTokens = await authenticate();
+//     const baseUrl = `${endpoint}/orders/v0/orders`;
+
+//     const queryParams = {
+//       MarketplaceIds: marketplace_id,
+//       CreatedAfter: createdAfter,
+//       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
+//     };
+
+//     let allOrders = [];
+//     let nextToken = null;
+//     let retryCount = 0;
+//     const maxRetries = 5;
+
+//     do {
+//       if (nextToken) {
+//         queryParams.NextToken = nextToken;
+//       } else {
+//         delete queryParams.NextToken; // Ensure it's removed on the first request
+//       }
+
+//       const queryString = new URLSearchParams(queryParams).toString();
+//       const url = `${baseUrl}?${queryString}`;
+
+//       try {
+//         const response = await axios.get(url, {
+//           headers: {
+//             "x-amz-access-token": authTokens.access_token,
+//             "Content-Type": "application/json",
+//           },
+//         });
+
+//         const ordersData = response.data.payload.Orders || [];
+//         allOrders = allOrders.concat(ordersData);
+
+//         // Ensure nextToken exists and is valid before continuing
+//         nextToken = response.data.payload.NextToken?.trim() || null;
+
+//         retryCount = 0; // Reset retry count on successful request
+//       } catch (error) {
+//         if (error.response && error.response.status === 429) {
+//           retryCount++;
+//           if (retryCount > maxRetries) {
+//             throw new Error("Max retries exceeded");
+//           }
+//           const retryAfter =
+//             error.response.headers["retry-after"] || Math.pow(2, retryCount);
+//           console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+//           await new Promise((resolve) =>
+//             setTimeout(resolve, retryAfter * 1000)
+//           );
+//         } else {
+//           throw error;
+//         }
+//       }
+//     } while (nextToken && nextToken !== "null");
+
+//     const values = allOrders.map((order) => ({
+//       BuyerInfo: order.BuyerInfo,
+//       AmazonOrderId: order.AmazonOrderId,
+//       EarliestShipDate: order.EarliestShipDate,
+//       SalesChannel: order.SalesChannel,
+//       OrderStatus: order.OrderStatus,
+//       NumberOfItemsShipped: order.NumberOfItemsShipped,
+//       OrderType: order.OrderType,
+//       IsPremiumOrder: order.IsPremiumOrder,
+//       IsPrime: order.IsPrime,
+//       FulfillmentChannel: order.FulfillmentChannel,
+//       NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
+//       HasRegulatedItems: order.HasRegulatedItems,
+//       IsReplacementOrder: order.IsReplacementOrder,
+//       IsSoldByAB: order.IsSoldByAB,
+//       LatestShipDate: order.LatestShipDate,
+//       ShipServiceLevel: order.ShipServiceLevel,
+//       IsISPU: order.IsISPU,
+//       MarketplaceId: order.MarketplaceId,
+//       PurchaseDate: order.PurchaseDate,
+//       ShippingAddress: order.ShippingAddress,
+//       IsAccessPointOrder: order.IsAccessPointOrder,
+//       SellerOrderId: order.SellerOrderId,
+//       PaymentMethod: order.PaymentMethod,
+//       IsBusinessOrder: order.IsBusinessOrder,
+//       OrderTotal: order.OrderTotal,
+//       PaymentMethodDetails: order.PaymentMethodDetails,
+//       IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
+//       LastUpdateDate: order.LastUpdateDate,
+//       ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
+//     }));
+
+//     res.status(200).json(values);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error getting orders", error: error });
+//   }
+// };
+
 const getOrders = async (req, res) => {
+  const { marketplaceids } = req.query;
+
+  console.log("markeplaceId", marketplaceids)
   try {
-    // const createdAfter = moment().subtract(30, "days").toISOString();
-    const createdAfter = "2023-01-01T00:00:00Z";
+    const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplace_id,
+      MarketplaceIds: marketplaceids,
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
     };
@@ -66,7 +167,9 @@ const getOrders = async (req, res) => {
     let allOrders = [];
     let nextToken = null;
     let retryCount = 0;
-    const maxRetries = 5;
+    const maxRetries = 10;
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     do {
       if (nextToken) {
@@ -90,22 +193,37 @@ const getOrders = async (req, res) => {
         allOrders = allOrders.concat(ordersData);
 
         // Ensure nextToken exists and is valid before continuing
+        console.log("Next Token:", response.data.payload.NextToken);
         nextToken = response.data.payload.NextToken?.trim() || null;
 
         retryCount = 0; // Reset retry count on successful request
       } catch (error) {
-        if (error.response && error.response.status === 429) {
-          retryCount++;
-          if (retryCount > maxRetries) {
-            throw new Error("Max retries exceeded");
-          }
-          const retryAfter =
-            error.response.headers["retry-after"] || Math.pow(2, retryCount);
-          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-          await new Promise((resolve) =>
-            setTimeout(resolve, retryAfter * 1000)
+        if (error.response) {
+          const { status, data, headers } = error.response;
+          console.error(
+            `Error response: Status: ${status}, Data: ${JSON.stringify(
+              data
+            )}, Headers: ${JSON.stringify(headers)}`
           );
+          if (status === 429) {
+            retryCount++;
+            if (retryCount > maxRetries) {
+              throw new Error("Max retries exceeded");
+            }
+            const retryAfter =
+              headers["retry-after"] || Math.pow(2, retryCount);
+            const jitter = Math.random() * 1000; // Add jitter to avoid thundering herd
+            console.warn(
+              `Rate limited. Retrying after ${
+                retryAfter + jitter
+              } milliseconds...`
+            );
+            await sleep(retryAfter * 1000 + jitter);
+          } else {
+            throw error;
+          }
         } else {
+          console.error(`Error: ${error.message}`);
           throw error;
         }
       }
@@ -145,7 +263,10 @@ const getOrders = async (req, res) => {
 
     res.status(200).json(values);
   } catch (error) {
-    res.status(500).json({ message: "Error getting orders", error: error });
+    console.error(`Error getting orders: ${error.message}`);
+    res
+      .status(500)
+      .json({ message: "Error getting orders", error: error.message });
   }
 };
 
