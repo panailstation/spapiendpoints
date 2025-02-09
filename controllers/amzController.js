@@ -166,7 +166,7 @@ const getOrders = async (req, res) => {
     let allOrders = [];
     let nextToken = null;
     let retryCount = 0;
-    const maxRetries = 5;
+    const maxRetries = 10;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
