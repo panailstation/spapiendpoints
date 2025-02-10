@@ -22,16 +22,25 @@ const marketplaceIds = [
 const endpoint = "https://sellingpartnerapi-eu.amazon.com";
 const sku = "T5-TUY3-3FH8";
 
-const marketplaceSheetMap = {
-  A13V1IB3VIYZZH: "Sheet1",
-  APJ6JRA9NG5V4: "Sheet2",
-  A1RKKUPIHCS9HS: "Sheet3",
-  AMEN7PMS3EDWL: "Sheet4",
-  A1PA6795UKMFR9: "Sheet5",
-  A1805IZSGTT6HS: "Sheet6",
-  A1F83G8C2ARO7P: "Sheet7",
-  A1C3SOZRARQ6R3: "Sheet8",
-  A2NODRKZP88ZB9: "Sheet9",
+const backoffRetry = async (callback, maxRetries = 5) => {
+  let attempt = 0;
+  let delay = 5000; // Start with 5 seconds
+
+  while (attempt < maxRetries) {
+    try {
+      return await callback();
+    } catch (error) {
+      if (error.response?.status === 429) {
+        console.warn(`Rate limited, retrying in ${delay / 1000} seconds...`);
+        await sleep(delay);
+        delay *= 2; // Exponential backoff (5s → 10s → 20s → 40s → 80s)
+      } else {
+        throw error;
+      }
+    }
+    attempt++;
+  }
+  throw new Error("Max retries reached, still rate-limited.");
 };
 
 const auth = async (req, res) => {
