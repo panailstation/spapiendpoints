@@ -169,7 +169,7 @@ const getOrders = async (req, res) => {
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplaceIds,
+      MarketplaceIds: marketplaceIds.join(','), // Join marketplace IDs with a comma
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Reduce number of requests
     };
@@ -180,7 +180,7 @@ const getOrders = async (req, res) => {
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
-        await sleep(15000); // Increased delay to 15 seconds
+        // await sleep(15000); // Increased delay to 15 seconds
       } else {
         delete queryParams.NextToken;
       }
