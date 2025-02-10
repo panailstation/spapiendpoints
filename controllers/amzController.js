@@ -24,26 +24,6 @@ const sku = "T5-TUY3-3FH8";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const backoffRetry = async (callback, maxRetries = 5) => {
-  let attempt = 0;
-  let delay = 5000; // Start with 5 seconds
-
-  while (attempt < maxRetries) {
-    try {
-      return await callback();
-    } catch (error) {
-      if (error.response?.status === 429) {
-        console.warn(`Rate limited, retrying in ${delay / 1000} seconds...`);
-        await sleep(delay);
-        delay *= 2; // Exponential backoff (5s → 10s → 20s → 40s → 80s)
-      } else {
-        throw error;
-      }
-    }
-    attempt++;
-  }
-  throw new Error("Max retries reached, still rate-limited.");
-};
 
 const auth = async (req, res) => {
   try {
@@ -176,6 +156,7 @@ const getOrders = async (req, res) => {
 
     let allOrders = [];
     let nextToken = null;
+    const maxRetries = 7;
 
     do {
       if (nextToken) {
