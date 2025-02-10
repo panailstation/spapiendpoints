@@ -164,7 +164,7 @@ const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
 
   try {
-    const createdAfter = "2024-01-01T00:00:00Z";
+    const createdAfter = "2023-01-01T00:00:00Z";
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
@@ -188,22 +188,37 @@ const getOrders = async (req, res) => {
       const queryString = new URLSearchParams(queryParams).toString();
       const url = `${baseUrl}?${queryString}`;
 
-      const response = await backoffRetry(async () => {
-        if (authTokens.expires_at < Date.now()) {
-          authTokens = await authenticate(); // Refresh token
-        }
-        return await axios.get(url, {
+      try {
+        const response = await axios.get(url, {
           headers: {
             "x-amz-access-token": authTokens.access_token,
             "Content-Type": "application/json",
           },
         });
-      });
 
-      const ordersData = response.data.payload.Orders || [];
-      allOrders = allOrders.concat(ordersData);
+        const ordersData = response.data.payload.Orders || [];
+        allOrders = allOrders.concat(ordersData);
 
-      nextToken = response.data.payload.NextToken?.trim() || null;
+        // Ensure nextToken exists and is valid before continuing
+        nextToken = response.data.payload.NextToken?.trim() || null;
+
+        retryCount = 0; // Reset retry count on successful request
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw new Error("Max retries exceeded");
+          }
+          const retryAfter =
+            error.response.headers["retry-after"] || Math.pow(2, retryCount);
+          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000)
+          );
+        } else {
+          throw error;
+        }
+      }
     } while (nextToken && nextToken !== "null");
 
     const values = allOrders.map((order) => ({
