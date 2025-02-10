@@ -150,20 +150,21 @@ const auth = async (req, res) => {
 // };
 
 const getOrders = async (req, res) => {
+  const { marketplaceids } = req.query;
+
   try {
     const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplace_id,
+      MarketplaceIds: marketplaceids ? marketplaceids : marketplace_id,
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
     };
 
     let allOrders = [];
     let nextToken = null;
-    let retryCount = 0;
     const maxRetries = 10;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -171,6 +172,7 @@ const getOrders = async (req, res) => {
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
+        await sleep(2000); // Add a 2-second delay for each request with a NextToken
       } else {
         delete queryParams.NextToken; // Ensure it's removed on the first request
       }
@@ -192,22 +194,14 @@ const getOrders = async (req, res) => {
         // Ensure nextToken exists and is valid before continuing
         console.log("Next Token:", response.data.payload.NextToken);
         nextToken = response.data.payload.NextToken?.trim() || null;
-
-        retryCount = 0; // Reset retry count on successful request
       } catch (error) {
         if (error.response) {
           const { status, data, headers } = error.response;
           console.error(`Error response: Status: ${status}, Data: ${JSON.stringify(data)}, Headers: ${JSON.stringify(headers)}`);
           if (status === 429) {
-            retryCount++;
-            if (retryCount > maxRetries) {
-              throw new Error("Max retries exceeded");
-            }
-            const retryAfter = headers["retry-after"] ? parseInt(headers["retry-after"], 10) : Math.pow(2, retryCount);
-            const jitter = Math.random() * 1000; // Add jitter to avoid thundering herd
-            const delay = retryAfter * 1000 + jitter;
-            console.warn(`Rate limited. Retrying after ${delay} milliseconds...`);
-            await sleep(delay);
+            const retryAfter = headers["retry-after"] ? parseInt(headers["retry-after"], 10) : 2; // Default to 2 seconds
+            console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+            await sleep(retryAfter * 1000);
           } else if (data.errors && data.errors[0].code === "QuotaExceeded") {
             const quotaResetTime = 2000; // 2 seconds in milliseconds
             console.warn(`Quota exceeded. Retrying after ${quotaResetTime} milliseconds...`);
