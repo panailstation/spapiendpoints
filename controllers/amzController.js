@@ -605,48 +605,49 @@ const getInventory = async (req, res) => {
     let retryCount = 0;
     const maxRetries = 5;
 
-    do {
-      if (nextToken) {
-        queryParams.nextToken = nextToken;
-      } else {
-        delete queryParams.nextToken; // Ensure it's removed on the first request
-      }
+    // do {
+    //   if (nextToken) {
+    //     queryParams.nextToken = nextToken;
+    //     await sleep(5000); // Add a 5-second delay for each request with a NextToken
+    //   } else {
+    //     delete queryParams.nextToken; // Ensure it's removed on the first request
+    //   }
 
-      const queryString = new URLSearchParams(queryParams).toString();
-      const url = `${baseUrl}?${queryString}`;
+    //   const queryString = new URLSearchParams(queryParams).toString();
+    //   const url = `${baseUrl}?${queryString}`;
 
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            "x-amz-access-token": authTokens.access_token,
-            "Content-Type": "application/json",
-          },
-        });
+    //   try {
+    //     const response = await axios.get(url, {
+    //       headers: {
+    //         "x-amz-access-token": authTokens.access_token,
+    //         "Content-Type": "application/json",
+    //       },
+    //     });
 
-        const inventoryData = response.data.payload.inventorySummaries || [];
-        allInventoryData = allInventoryData.concat(inventoryData);
+    //     const inventoryData = response.data.payload.inventorySummaries || [];
+    //     allInventoryData = allInventoryData.concat(inventoryData);
 
-        // Ensure nextToken exists and is valid before continuing
-        nextToken = response.data.pagination?.nextToken?.trim() || null;
+    //     // Ensure nextToken exists and is valid before continuing
+    //     nextToken = response.data.pagination?.nextToken?.trim() || null;
 
-        retryCount = 0; // Reset retry count on successful request
-      } catch (error) {
-        if (error.response && error.response.status === 429) {
-          retryCount++;
-          if (retryCount > maxRetries) {
-            throw new Error("Max retries exceeded");
-          }
-          const retryAfter =
-            error.response.headers["retry-after"] || Math.pow(2, retryCount);
-          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-          await new Promise((resolve) =>
-            setTimeout(resolve, retryAfter * 1000)
-          );
-        } else {
-          throw error;
-        }
-      }
-    } while (nextToken && nextToken !== "null");
+    //     retryCount = 0; // Reset retry count on successful request
+    //   } catch (error) {
+    //     if (error.response && error.response.status === 429) {
+    //       retryCount++;
+    //       if (retryCount > maxRetries) {
+    //         throw new Error("Max retries exceeded");
+    //       }
+    //       const retryAfter =
+    //         error.response.headers["retry-after"] || Math.pow(2, retryCount);
+    //       console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+    //       await new Promise((resolve) =>
+    //         setTimeout(resolve, retryAfter * 1000)
+    //       );
+    //     } else {
+    //       throw error;
+    //     }
+    //   }
+    // } while (nextToken && nextToken !== "null");
 
     console.log("Final nextToken:", nextToken);
 
