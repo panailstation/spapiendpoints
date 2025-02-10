@@ -165,14 +165,13 @@ const getOrders = async (req, res) => {
 
     let allOrders = [];
     let nextToken = null;
-    const maxRetries = 10;
 
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
-        await sleep(2000); // Add a 2-second delay for each request with a NextToken
+        await sleep(5000); // Add a 5-second delay for each request with a NextToken
       } else {
         delete queryParams.NextToken; // Ensure it's removed on the first request
       }
@@ -199,9 +198,8 @@ const getOrders = async (req, res) => {
           const { status, data, headers } = error.response;
           console.error(`Error response: Status: ${status}, Data: ${JSON.stringify(data)}, Headers: ${JSON.stringify(headers)}`);
           if (status === 429) {
-            const retryAfter = headers["retry-after"] ? parseInt(headers["retry-after"], 10) : 2; // Default to 2 seconds
-            console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-            await sleep(retryAfter * 1000);
+            console.warn('Rate limited. Stopping further requests.');
+            break; // Stop making further requests
           } else if (data.errors && data.errors[0].code === "QuotaExceeded") {
             const quotaResetTime = 2000; // 2 seconds in milliseconds
             console.warn(`Quota exceeded. Retrying after ${quotaResetTime} milliseconds...`);
