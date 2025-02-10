@@ -152,13 +152,25 @@ const auth = async (req, res) => {
 const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
 
+  const marketplaceIds = [
+    A13V1IB3VIYZZH,
+    APJ6JRA9NG5V4,
+    A1RKKUPIHCS9HS,
+    AMEN7PMS3EDWL,
+    A1PA6795UKMFR9,
+    A1805IZSGTT6HS,
+    A1F83G8C2ARO7P,
+    A1C3SOZRARQ6R3,
+    A2NODRKZP88ZB9,
+  ];
+
   try {
     const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplaceids ? marketplaceids : marketplace_id,
+      MarketplaceIds: marketplaceIds,
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
     };
@@ -196,14 +208,14 @@ const getOrders = async (req, res) => {
       } catch (error) {
         if (error.response) {
           const { status, data, headers } = error.response;
-          console.error(`Error response: Status: ${status}, Data: ${JSON.stringify(data)}, Headers: ${JSON.stringify(headers)}`);
+          console.error(
+            `Error response: Status: ${status}, Data: ${JSON.stringify(
+              data
+            )}, Headers: ${JSON.stringify(headers)}`
+          );
           if (status === 429) {
-            console.warn('Rate limited. Stopping further requests.');
+            console.warn("Rate limited. Stopping further requests.");
             break; // Stop making further requests
-          } else if (data.errors && data.errors[0].code === "QuotaExceeded") {
-            const quotaResetTime = 2000; // 2 seconds in milliseconds
-            console.warn(`Quota exceeded. Retrying after ${quotaResetTime} milliseconds...`);
-            await sleep(quotaResetTime);
           } else {
             throw error;
           }
@@ -249,7 +261,9 @@ const getOrders = async (req, res) => {
     res.status(200).json(values);
   } catch (error) {
     console.error(`Error getting orders: ${error.message}`);
-    res.status(500).json({ message: "Error getting orders", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error getting orders", error: error.message });
   }
 };
 
