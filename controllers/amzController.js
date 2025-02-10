@@ -153,105 +153,54 @@ const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
 
   try {
-    const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
-    const authTokens = await authenticate();
+    const createdAfter = "2023-01-01T00:00:00Z";
+    let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
       MarketplaceIds: marketplaceIds,
       CreatedAfter: createdAfter,
-      MaxResultsPerPage: 100, // Adjust the number of results per page as needed
+      MaxResultsPerPage: 100, // Reduce number of requests
     };
 
     let allOrders = [];
     let nextToken = null;
-
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
-        await sleep(5000); // Add a 5-second delay for each request with a NextToken
+        await sleep(60000); // Increased delay to 60 seconds
       } else {
-        delete queryParams.NextToken; // Ensure it's removed on the first request
+        delete queryParams.NextToken;
       }
 
       const queryString = new URLSearchParams(queryParams).toString();
       const url = `${baseUrl}?${queryString}`;
 
-      try {
-        const response = await axios.get(url, {
+      const response = await backoffRetry(async () => {
+        if (authTokens.expires_at < Date.now()) {
+          authTokens = await authenticate(); // Refresh token
+        }
+        return await axios.get(url, {
           headers: {
             "x-amz-access-token": authTokens.access_token,
             "Content-Type": "application/json",
           },
         });
+      });
 
-        const ordersData = response.data.payload.Orders || [];
-        allOrders = allOrders.concat(ordersData);
+      const ordersData = response.data.payload.Orders || [];
+      allOrders = allOrders.concat(ordersData);
 
-        // Ensure nextToken exists and is valid before continuing
-        console.log("Next Token:", response.data.payload.NextToken);
-        nextToken = response.data.payload.NextToken?.trim() || null;
-      } catch (error) {
-        if (error.response) {
-          const { status, data, headers } = error.response;
-          console.error(
-            `Error response: Status: ${status}, Data: ${JSON.stringify(
-              data
-            )}, Headers: ${JSON.stringify(headers)}`
-          );
-          if (status === 429) {
-            console.warn("Rate limited. Stopping further requests.");
-            break; // Stop making further requests
-          } else {
-            throw error;
-          }
-        } else {
-          console.error(`Error: ${error.message}`);
-          throw error;
-        }
-      }
+      nextToken = response.data.payload.NextToken?.trim() || null;
+      console.log("NextToken:", nextToken);
     } while (nextToken && nextToken !== "null");
 
-    const values = allOrders.map((order) => ({
-      BuyerInfo: order.BuyerInfo,
-      AmazonOrderId: order.AmazonOrderId,
-      EarliestShipDate: order.EarliestShipDate,
-      SalesChannel: order.SalesChannel,
-      OrderStatus: order.OrderStatus,
-      NumberOfItemsShipped: order.NumberOfItemsShipped,
-      OrderType: order.OrderType,
-      IsPremiumOrder: order.IsPremiumOrder,
-      IsPrime: order.IsPrime,
-      FulfillmentChannel: order.FulfillmentChannel,
-      NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
-      HasRegulatedItems: order.HasRegulatedItems,
-      IsReplacementOrder: order.IsReplacementOrder,
-      IsSoldByAB: order.IsSoldByAB,
-      LatestShipDate: order.LatestShipDate,
-      ShipServiceLevel: order.ShipServiceLevel,
-      IsISPU: order.IsISPU,
-      MarketplaceId: order.MarketplaceId,
-      PurchaseDate: order.PurchaseDate,
-      ShippingAddress: order.ShippingAddress,
-      IsAccessPointOrder: order.IsAccessPointOrder,
-      SellerOrderId: order.SellerOrderId,
-      PaymentMethod: order.PaymentMethod,
-      IsBusinessOrder: order.IsBusinessOrder,
-      OrderTotal: order.OrderTotal,
-      PaymentMethodDetails: order.PaymentMethodDetails,
-      IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
-      LastUpdateDate: order.LastUpdateDate,
-      ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
-    }));
-
-    res.status(200).json(values);
+    res.status(200).json(allOrders);
   } catch (error) {
     console.error(`Error getting orders: ${error.message}`);
-    res
-      .status(500)
-      .json({ message: "Error getting orders", error: error.message });
+    res.status(500).json({ message: "Error getting orders", error: error.message });
   }
 };
 
