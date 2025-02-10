@@ -7,7 +7,7 @@ const { shipmentData } = require("../utils/amz/shipmentData");
 const { listingData, patchListingData } = require("../utils/amz/listingData");
 const { google } = require("googleapis");
 
-// const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
+const marketplace_id = "A1PA6795UKMFR9"; // This is used for the case of a single id
 const marketplaceIds = [
   "A13V1IB3VIYZZH",
   "APJ6JRA9NG5V4",
@@ -150,15 +150,13 @@ const auth = async (req, res) => {
 // };
 
 const getOrders = async (req, res) => {
-  const { marketplaceids } = req.query;
-
   try {
     const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplaceids,
+      MarketplaceIds: marketplace_id,
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
     };
@@ -211,7 +209,7 @@ const getOrders = async (req, res) => {
             console.warn(`Rate limited. Retrying after ${delay} milliseconds...`);
             await sleep(delay);
           } else if (data.errors && data.errors[0].code === "QuotaExceeded") {
-            const quotaResetTime = 6000; // 1 minute in milliseconds
+            const quotaResetTime = 2000; // 2 seconds in milliseconds
             console.warn(`Quota exceeded. Retrying after ${quotaResetTime} milliseconds...`);
             await sleep(quotaResetTime);
           } else {
