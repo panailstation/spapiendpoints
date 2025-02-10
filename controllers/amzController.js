@@ -152,18 +152,6 @@ const auth = async (req, res) => {
 const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
 
-  const marketplaceIds = [
-    A13V1IB3VIYZZH,
-    APJ6JRA9NG5V4,
-    A1RKKUPIHCS9HS,
-    AMEN7PMS3EDWL,
-    A1PA6795UKMFR9,
-    A1805IZSGTT6HS,
-    A1F83G8C2ARO7P,
-    A1C3SOZRARQ6R3,
-    A2NODRKZP88ZB9,
-  ];
-
   try {
     const createdAfter = "2023-01-01T00:00:00Z"; // First day of the first month of 2023
     const authTokens = await authenticate();
