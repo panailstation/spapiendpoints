@@ -169,7 +169,7 @@ const getOrders = async (req, res) => {
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
-      MarketplaceIds: marketplaceIds.join(','), // Join marketplace IDs with a comma
+      MarketplaceIds: marketplaceids, 
       CreatedAfter: createdAfter,
       MaxResultsPerPage: 100, // Reduce number of requests
     };
