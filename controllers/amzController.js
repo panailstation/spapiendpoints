@@ -22,6 +22,8 @@ const marketplaceIds = [
 const endpoint = "https://sellingpartnerapi-eu.amazon.com";
 const sku = "T5-TUY3-3FH8";
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const backoffRetry = async (callback, maxRetries = 5) => {
   let attempt = 0;
   let delay = 5000; // Start with 5 seconds
@@ -174,12 +176,11 @@ const getOrders = async (req, res) => {
 
     let allOrders = [];
     let nextToken = null;
-    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
-        await sleep(60000); // Increased delay to 60 seconds
+        await sleep(15000); // Increased delay to 15 seconds
       } else {
         delete queryParams.NextToken;
       }
@@ -203,13 +204,46 @@ const getOrders = async (req, res) => {
       allOrders = allOrders.concat(ordersData);
 
       nextToken = response.data.payload.NextToken?.trim() || null;
-      console.log("NextToken:", nextToken);
     } while (nextToken && nextToken !== "null");
 
-    res.status(200).json(allOrders);
+    const values = allOrders.map((order) => ({
+      BuyerInfo: order.BuyerInfo,
+      AmazonOrderId: order.AmazonOrderId,
+      EarliestShipDate: order.EarliestShipDate,
+      SalesChannel: order.SalesChannel,
+      OrderStatus: order.OrderStatus,
+      NumberOfItemsShipped: order.NumberOfItemsShipped,
+      OrderType: order.OrderType,
+      IsPremiumOrder: order.IsPremiumOrder,
+      IsPrime: order.IsPrime,
+      FulfillmentChannel: order.FulfillmentChannel,
+      NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
+      HasRegulatedItems: order.HasRegulatedItems,
+      IsReplacementOrder: order.IsReplacementOrder,
+      IsSoldByAB: order.IsSoldByAB,
+      LatestShipDate: order.LatestShipDate,
+      ShipServiceLevel: order.ShipServiceLevel,
+      IsISPU: order.IsISPU,
+      MarketplaceId: order.MarketplaceId,
+      PurchaseDate: order.PurchaseDate,
+      ShippingAddress: order.ShippingAddress,
+      IsAccessPointOrder: order.IsAccessPointOrder,
+      SellerOrderId: order.SellerOrderId,
+      PaymentMethod: order.PaymentMethod,
+      IsBusinessOrder: order.IsBusinessOrder,
+      OrderTotal: order.OrderTotal,
+      PaymentMethodDetails: order.PaymentMethodDetails,
+      IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
+      LastUpdateDate: order.LastUpdateDate,
+      ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
+    }));
+
+    res.status(200).json(values);
   } catch (error) {
     console.error(`Error getting orders: ${error.message}`);
-    res.status(500).json({ message: "Error getting orders", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error getting orders", error: error.message });
   }
 };
 
@@ -563,49 +597,48 @@ const getInventory = async (req, res) => {
     let retryCount = 0;
     const maxRetries = 5;
 
-    // do {
-    //   if (nextToken) {
-    //     queryParams.nextToken = nextToken;
-    //     await sleep(5000); // Add a 5-second delay for each request with a NextToken
-    //   } else {
-    //     delete queryParams.nextToken; // Ensure it's removed on the first request
-    //   }
+    do {
+      if (nextToken) {
+        queryParams.nextToken = nextToken;
+      } else {
+        delete queryParams.nextToken; // Ensure it's removed on the first request
+      }
 
-    //   const queryString = new URLSearchParams(queryParams).toString();
-    //   const url = `${baseUrl}?${queryString}`;
+      const queryString = new URLSearchParams(queryParams).toString();
+      const url = `${baseUrl}?${queryString}`;
 
-    //   try {
-    //     const response = await axios.get(url, {
-    //       headers: {
-    //         "x-amz-access-token": authTokens.access_token,
-    //         "Content-Type": "application/json",
-    //       },
-    //     });
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            "x-amz-access-token": authTokens.access_token,
+            "Content-Type": "application/json",
+          },
+        });
 
-    //     const inventoryData = response.data.payload.inventorySummaries || [];
-    //     allInventoryData = allInventoryData.concat(inventoryData);
+        const inventoryData = response.data.payload.inventorySummaries || [];
+        allInventoryData = allInventoryData.concat(inventoryData);
 
-    //     // Ensure nextToken exists and is valid before continuing
-    //     nextToken = response.data.pagination?.nextToken?.trim() || null;
+        // Ensure nextToken exists and is valid before continuing
+        nextToken = response.data.pagination?.nextToken?.trim() || null;
 
-    //     retryCount = 0; // Reset retry count on successful request
-    //   } catch (error) {
-    //     if (error.response && error.response.status === 429) {
-    //       retryCount++;
-    //       if (retryCount > maxRetries) {
-    //         throw new Error("Max retries exceeded");
-    //       }
-    //       const retryAfter =
-    //         error.response.headers["retry-after"] || Math.pow(2, retryCount);
-    //       console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-    //       await new Promise((resolve) =>
-    //         setTimeout(resolve, retryAfter * 1000)
-    //       );
-    //     } else {
-    //       throw error;
-    //     }
-    //   }
-    // } while (nextToken && nextToken !== "null");
+        retryCount = 0; // Reset retry count on successful request
+      } catch (error) {
+        if (error.response && error.response.status === 429) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw new Error("Max retries exceeded");
+          }
+          const retryAfter =
+            error.response.headers["retry-after"] || Math.pow(2, retryCount);
+          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000)
+          );
+        } else {
+          throw error;
+        }
+      }
+    } while (nextToken && nextToken !== "null");
 
     console.log("Final nextToken:", nextToken);
 
