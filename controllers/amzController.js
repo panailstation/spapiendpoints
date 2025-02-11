@@ -157,6 +157,7 @@ const getOrders = async (req, res) => {
     let allOrders = [];
     let nextToken = null;
     const maxRetries = 7;
+    let retryCount = 0;
 
     do {
       if (nextToken) {
