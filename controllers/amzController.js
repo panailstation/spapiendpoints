@@ -149,39 +149,56 @@ const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
   
   try {
-    const createdAfter = moment().subtract(30, "days").toISOString(); 
-    // "2025-01-01T00:00:00Z";
+    const createdAfter = "2023-01-01T00:00:00Z";
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams = {
       MarketplaceIds: marketplaceids, 
       CreatedAfter: createdAfter,
+      MaxResultsPerPage: 100,
     };
-
-    // MaxResultsPerPage: 100,
 
     let allOrders = [];
     let nextToken = null;
-    const maxRetries = 10;
-
+    const maxRetries = 7;
+    let availableTokens = 20; // Burst capacity
+    const refillRate = 0.0167; // Requests per second (1 per 60s)
+    
     // Function to introduce a delay with jitter
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const getExponentialBackoffTime = (retryCount) => {
       const baseDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
-      const jitter = Math.random() * 1000; // Add jitter to avoid synchronized retries
+      const jitter = Math.random() * 1000; // Add jitter
       return baseDelay + jitter;
     };
-
+    
+    const refillTokens = async () => {
+      while (true) {
+        await sleep(60000); // Wait 60 seconds before refilling
+        if (availableTokens < 20) {
+          availableTokens++;
+        }
+      }
+    };
+    
+    // Start token refill process
+    refillTokens();
+    
     do {
       let retryCount = 0;
       let success = false;
       do {
         try {
+          if (availableTokens <= 0) {
+            console.warn("Rate limit reached, waiting for tokens...");
+            await sleep(1000); // Check every second for available tokens
+            continue;
+          }
+          
           if (nextToken) {
             queryParams.NextToken = nextToken;
-            // await sleep(2000) // Introduce a delay between requests
           } else {
             delete queryParams.NextToken;
           }
@@ -200,7 +217,8 @@ const getOrders = async (req, res) => {
           allOrders = allOrders.concat(ordersData);
 
           nextToken = response.data.payload.NextToken?.trim() || null;
-          success = true; // Break retry loop on success
+          success = true;
+          availableTokens--; // Consume a token
         } catch (error) {
           if (error.response && error.response.status === 429) {
             retryCount++;
@@ -211,7 +229,7 @@ const getOrders = async (req, res) => {
             console.warn(`Rate limited. Retrying in ${backoffTime / 1000} seconds...`);
             await sleep(backoffTime);
           } else {
-            throw error; // Throw other errors immediately
+            throw error;
           }
         }
       } while (!success && retryCount <= maxRetries);
