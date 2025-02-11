@@ -42,28 +42,30 @@ const auth = async (req, res) => {
 };
 
 // const getOrders = async (req, res) => {
+//   const { marketplaceids } = req.query;
+
 //   try {
-//     // const createdAfter = moment().subtract(30, "days").toISOString();
 //     const createdAfter = "2023-01-01T00:00:00Z";
-//     const authTokens = await authenticate();
+//     let authTokens = await authenticate();
 //     const baseUrl = `${endpoint}/orders/v0/orders`;
 
 //     const queryParams = {
-//       MarketplaceIds: marketplace_id,
+//       MarketplaceIds: marketplaceids, 
 //       CreatedAfter: createdAfter,
-//       MaxResultsPerPage: 100, // Adjust the number of results per page as needed
+//       MaxResultsPerPage: 100, // Reduce number of requests
 //     };
 
 //     let allOrders = [];
 //     let nextToken = null;
+//     const maxRetries = 7;
 //     let retryCount = 0;
-//     const maxRetries = 5;
 
 //     do {
 //       if (nextToken) {
 //         queryParams.NextToken = nextToken;
+//         // await sleep(15000); // Increased delay to 15 seconds
 //       } else {
-//         delete queryParams.NextToken; // Ensure it's removed on the first request
+//         delete queryParams.NextToken;
 //       }
 
 //       const queryString = new URLSearchParams(queryParams).toString();
@@ -136,13 +138,16 @@ const auth = async (req, res) => {
 
 //     res.status(200).json(values);
 //   } catch (error) {
-//     res.status(500).json({ message: "Error getting orders", error: error });
+//     console.error(`Error getting orders: ${error.message}`);
+//     res
+//       .status(500)
+//       .json({ message: "Error getting orders", error: error.message });
 //   }
 // };
 
 const getOrders = async (req, res) => {
   const { marketplaceids } = req.query;
-
+  
   try {
     const createdAfter = "2023-01-01T00:00:00Z";
     let authTokens = await authenticate();
@@ -151,56 +156,62 @@ const getOrders = async (req, res) => {
     const queryParams = {
       MarketplaceIds: marketplaceids, 
       CreatedAfter: createdAfter,
-      MaxResultsPerPage: 100, // Reduce number of requests
+      MaxResultsPerPage: 100,
     };
 
     let allOrders = [];
     let nextToken = null;
     const maxRetries = 7;
-    let retryCount = 0;
+
+    // Function to introduce a delay with jitter
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const getExponentialBackoffTime = (retryCount) => {
+      const baseDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+      const jitter = Math.random() * 1000; // Add jitter to avoid synchronized retries
+      return baseDelay + jitter;
+    };
 
     do {
-      if (nextToken) {
-        queryParams.NextToken = nextToken;
-        // await sleep(15000); // Increased delay to 15 seconds
-      } else {
-        delete queryParams.NextToken;
-      }
-
-      const queryString = new URLSearchParams(queryParams).toString();
-      const url = `${baseUrl}?${queryString}`;
-
-      try {
-        const response = await axios.get(url, {
-          headers: {
-            "x-amz-access-token": authTokens.access_token,
-            "Content-Type": "application/json",
-          },
-        });
-
-        const ordersData = response.data.payload.Orders || [];
-        allOrders = allOrders.concat(ordersData);
-
-        // Ensure nextToken exists and is valid before continuing
-        nextToken = response.data.payload.NextToken?.trim() || null;
-
-        retryCount = 0; // Reset retry count on successful request
-      } catch (error) {
-        if (error.response && error.response.status === 429) {
-          retryCount++;
-          if (retryCount > maxRetries) {
-            throw new Error("Max retries exceeded");
+      let retryCount = 0;
+      let success = false;
+      do {
+        try {
+          if (nextToken) {
+            queryParams.NextToken = nextToken;
+          } else {
+            delete queryParams.NextToken;
           }
-          const retryAfter =
-            error.response.headers["retry-after"] || Math.pow(2, retryCount);
-          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-          await new Promise((resolve) =>
-            setTimeout(resolve, retryAfter * 1000)
-          );
-        } else {
-          throw error;
+
+          const queryString = new URLSearchParams(queryParams).toString();
+          const url = `${baseUrl}?${queryString}`;
+
+          const response = await axios.get(url, {
+            headers: {
+              "x-amz-access-token": authTokens.access_token,
+              "Content-Type": "application/json",
+            },
+          });
+
+          const ordersData = response.data.payload.Orders || [];
+          allOrders = allOrders.concat(ordersData);
+
+          nextToken = response.data.payload.NextToken?.trim() || null;
+          success = true; // Break retry loop on success
+        } catch (error) {
+          if (error.response && error.response.status === 429) {
+            retryCount++;
+            if (retryCount > maxRetries) {
+              throw new Error("Max retries exceeded due to rate limiting");
+            }
+            const backoffTime = getExponentialBackoffTime(retryCount);
+            console.warn(`Rate limited. Retrying in ${backoffTime / 1000} seconds...`);
+            await sleep(backoffTime);
+          } else {
+            throw error; // Throw other errors immediately
+          }
         }
-      }
+      } while (!success && retryCount <= maxRetries);
     } while (nextToken && nextToken !== "null");
 
     const values = allOrders.map((order) => ({
@@ -238,9 +249,7 @@ const getOrders = async (req, res) => {
     res.status(200).json(values);
   } catch (error) {
     console.error(`Error getting orders: ${error.message}`);
-    res
-      .status(500)
-      .json({ message: "Error getting orders", error: error.message });
+    res.status(500).json({ message: "Error getting orders", error: error.message });
   }
 };
 
