@@ -83,7 +83,8 @@ const getOrders = async (req, res) => {
         allOrders = allOrders.concat(ordersData);
 
         // Ensure nextToken exists and is valid before continuing
-        nextToken = response.data.payload.NextToken?.trim() || null;
+        // nextToken = response.data.payload.NextToken?.trim() || null;
+        nextToken = null;
 
         retryCount = 0; // Reset retry count on successful request
       } catch (error) {
