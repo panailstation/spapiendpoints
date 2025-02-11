@@ -161,7 +161,7 @@ const getOrders = async (req, res) => {
 
     let allOrders = [];
     let nextToken = null;
-    const maxRetries = 7;
+    const maxRetries = 10;
 
     // Function to introduce a delay with jitter
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -179,6 +179,7 @@ const getOrders = async (req, res) => {
         try {
           if (nextToken) {
             queryParams.NextToken = nextToken;
+            await sleep(2000) // Introduce a delay between requests
           } else {
             delete queryParams.NextToken;
           }
