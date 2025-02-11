@@ -157,8 +157,9 @@ const getOrders = async (req, res) => {
     const queryParams = {
       MarketplaceIds: marketplaceids, 
       CreatedAfter: createdAfter,
-      MaxResultsPerPage: 100,
     };
+
+    // MaxResultsPerPage: 100,
 
     let allOrders = [];
     let nextToken = null;
@@ -180,7 +181,7 @@ const getOrders = async (req, res) => {
         try {
           if (nextToken) {
             queryParams.NextToken = nextToken;
-            await sleep(2000) // Introduce a delay between requests
+            // await sleep(2000) // Introduce a delay between requests
           } else {
             delete queryParams.NextToken;
           }
