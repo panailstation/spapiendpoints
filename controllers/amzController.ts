@@ -81,8 +81,8 @@ const getOrders = async (req: Request, res: Response) => {
   const { marketplaceids } = req.query;
 
   try {
-    const createdAfter = "2023-01-01T00:00:00Z";
-    const createdBefore = "2023-08-31T23:59:59Z";
+    const createdAfter = "2023-09-01T00:00:00Z";
+    const createdBefore = "2023-12-31T23:59:59Z";
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
