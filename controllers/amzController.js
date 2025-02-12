@@ -161,7 +161,7 @@ const getOrders = async (req, res) => {
 
     let allOrders = [];
     let nextToken = null;
-    const maxRetries = 7;
+    const maxRetries = 20;
     let availableTokens = 20; // Burst capacity
     const refillRate = 0.0167; // Requests per second (1 per 60s)
 
