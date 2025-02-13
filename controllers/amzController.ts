@@ -82,13 +82,14 @@ const getOrders = async (req: Request, res: Response) => {
 
   try {
     const createdAfter = "2025-01-01T00:00:00Z";
-    const createdBefore = "2025-12-31T23:59:59Z";
+    const createdBefore = "2025-01-31T23:59:59Z";
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
-    const queryParams: { MarketplaceIds: any; CreatedAfter: string; MaxResultsPerPage: string; NextToken?: string | null } = {
-      MarketplaceIds: marketplaceids,
+    const queryParams: Record<string, string> = {
+      MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
       CreatedAfter: createdAfter,
+      CreatedBefore: createdBefore,
       MaxResultsPerPage: "100", // Reduce number of requests
     };
 
