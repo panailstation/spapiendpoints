@@ -77,23 +77,139 @@ const auth = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// const getOrders = async (req: Request, res: Response) => {
+//   const { marketplaceids } = req.query;
+
+//   try {
+//     const createdAfter = "2025-01-01T00:00:00Z";
+//     const createdBefore = "2025-01-31T23:59:59Z";
+//     let authTokens = await authenticate();
+//     const baseUrl = `${endpoint}/orders/v0/orders`;
+
+//     const queryParams: Record<string, string> = {
+//       MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
+//       CreatedAfter: createdAfter,
+//       CreatedBefore: createdBefore,
+//       MaxResultsPerPage: "100", // Reduce number of requests
+//     };
+
+//     // CreatedBefore: createdBefore,
+
+//     let allOrders: any[] = [];
+//     let nextToken: string | null = null;
+//     const maxRetries = 7;
+//     let retryCount = 0;
+
+//     do {
+//       if (nextToken) {
+//         queryParams.NextToken = nextToken;
+//         // await sleep(15000); // Increased delay to 15 seconds
+//       } else {
+//         delete queryParams.NextToken;
+//       }
+
+//       const queryString: string = new URLSearchParams({
+//         ...queryParams,
+//         NextToken: queryParams.NextToken || ""
+//       }).toString();
+//       const url = `${baseUrl}?${queryString}`;
+
+//       try {
+//         const response = await axios.get(url, {
+//           headers: {
+//             "x-amz-access-token": authTokens.access_token,
+//             "Content-Type": "application/json",
+//           },
+//         });
+
+//         const ordersData = response.data.payload.Orders || [];
+//         allOrders = allOrders.concat(ordersData);
+
+//         // Ensure nextToken exists and is valid before continuing
+//         nextToken = response.data.payload.NextToken?.trim() || null;
+//         // nextToken = null;
+
+//         retryCount = 0; // Reset retry count on successful request
+//       } catch (error) {
+//         if ((error as any).response && (error as any).response.status === 429) {
+//           retryCount++;
+//           if (retryCount > maxRetries) {
+//             throw new Error("Max retries exceeded");
+//           }
+//           const retryAfter =
+//             (error as any).response.headers["retry-after"] || Math.pow(2, retryCount);
+//           console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+//           await new Promise((resolve) =>
+//             setTimeout(resolve, retryAfter * 1000)
+//           );
+//         } else {
+//           throw error;
+//         }
+//       }
+//     } while (nextToken && nextToken !== "null");
+
+//     const values = allOrders.map((order) => ({
+//       BuyerInfo: order.BuyerInfo,
+//       AmazonOrderId: order.AmazonOrderId,
+//       EarliestShipDate: order.EarliestShipDate,
+//       SalesChannel: order.SalesChannel,
+//       OrderStatus: order.OrderStatus,
+//       NumberOfItemsShipped: order.NumberOfItemsShipped,
+//       OrderType: order.OrderType,
+//       IsPremiumOrder: order.IsPremiumOrder,
+//       IsPrime: order.IsPrime,
+//       FulfillmentChannel: order.FulfillmentChannel,
+//       NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
+//       HasRegulatedItems: order.HasRegulatedItems,
+//       IsReplacementOrder: order.IsReplacementOrder,
+//       IsSoldByAB: order.IsSoldByAB,
+//       LatestShipDate: order.LatestShipDate,
+//       ShipServiceLevel: order.ShipServiceLevel,
+//       IsISPU: order.IsISPU,
+//       MarketplaceId: order.MarketplaceId,
+//       PurchaseDate: order.PurchaseDate,
+//       ShippingAddress: order.ShippingAddress,
+//       IsAccessPointOrder: order.IsAccessPointOrder,
+//       SellerOrderId: order.SellerOrderId,
+//       PaymentMethod: order.PaymentMethod,
+//       IsBusinessOrder: order.IsBusinessOrder,
+//       OrderTotal: order.OrderTotal,
+//       PaymentMethodDetails: order.PaymentMethodDetails,
+//       IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
+//       LastUpdateDate: order.LastUpdateDate,
+//       ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
+//     }));
+
+//     res.status(200).json(values);
+//   } catch (error) {
+//     if (error instanceof Error) {
+//       console.error(`Error getting orders: ${error.message}`);
+//     } else {
+//       console.error(`Error getting orders: ${String(error)}`);
+//     }
+//     res
+//       .status(500)
+//       .json({ message: "Error getting orders", error: (error as any).message });
+//   }
+// };
+
 const getOrders = async (req: Request, res: Response) => {
-  const { marketplaceids } = req.query;
+  const { marketplaceids, createdAfter, createdBefore } = req.query;
 
   try {
-    const createdAfter = "2025-01-01T00:00:00Z";
-    const createdBefore = "2025-01-31T23:59:59Z";
+    const createdAfterFormatted = createdAfter ? new Date(createdAfter as string).toISOString() : "2025-01-01T00:00:00Z";
+    const createdBeforeFormatted = createdBefore ? new Date(createdBefore as string).toISOString() : undefined;
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
     const queryParams: Record<string, string> = {
       MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
-      CreatedAfter: createdAfter,
-      CreatedBefore: createdBefore,
+      CreatedAfter: createdAfterFormatted,
       MaxResultsPerPage: "100", // Reduce number of requests
     };
-
-    // CreatedBefore: createdBefore,
+    if (createdBeforeFormatted) {
+      queryParams.CreatedBefore = createdBeforeFormatted;
+    }
 
     let allOrders: any[] = [];
     let nextToken: string | null = null;
@@ -103,7 +219,6 @@ const getOrders = async (req: Request, res: Response) => {
     do {
       if (nextToken) {
         queryParams.NextToken = nextToken;
-        // await sleep(15000); // Increased delay to 15 seconds
       } else {
         delete queryParams.NextToken;
       }
@@ -125,10 +240,7 @@ const getOrders = async (req: Request, res: Response) => {
         const ordersData = response.data.payload.Orders || [];
         allOrders = allOrders.concat(ordersData);
 
-        // Ensure nextToken exists and is valid before continuing
         nextToken = response.data.payload.NextToken?.trim() || null;
-        // nextToken = null;
-
         retryCount = 0; // Reset retry count on successful request
       } catch (error) {
         if ((error as any).response && (error as any).response.status === 429) {
