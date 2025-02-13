@@ -258,7 +258,7 @@ const getOrders = async (req: Request, res: Response) => {
           throw error;
         }
       }
-    } while (nextToken && nextToken !== "null");
+    } while (nextToken && nextToken !== null);
 
     const values = allOrders.map((order) => ({
       BuyerInfo: order.BuyerInfo,
