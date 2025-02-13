@@ -86,7 +86,7 @@ const getOrders = async (req: Request, res: Response) => {
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
-    const queryParams: { MarketplaceIds: any; CreatedAfter: string; CreatedBefore?: string | null; MaxResultsPerPage: string; NextToken?: string | null } = {
+    const queryParams: { MarketplaceIds: any; CreatedAfter: string; MaxResultsPerPage: string; NextToken?: string | null } = {
       MarketplaceIds: marketplaceids,
       CreatedAfter: createdAfter,
       MaxResultsPerPage: "100", // Reduce number of requests
