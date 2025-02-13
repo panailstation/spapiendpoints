@@ -86,12 +86,13 @@ const getOrders = async (req: Request, res: Response) => {
     let authTokens = await authenticate();
     const baseUrl = `${endpoint}/orders/v0/orders`;
 
-    const queryParams: { MarketplaceIds: any; CreatedAfter: string; CreatedBefore: string; MaxResultsPerPage: string; NextToken?: string | null } = {
+    const queryParams: { MarketplaceIds: any; CreatedAfter: string; CreatedBefore?: string | null; MaxResultsPerPage: string; NextToken?: string | null } = {
       MarketplaceIds: marketplaceids,
       CreatedAfter: createdAfter,
-      CreatedBefore: createdBefore,
       MaxResultsPerPage: "100", // Reduce number of requests
     };
+
+    // CreatedBefore: createdBefore,
 
     let allOrders: any[] = [];
     let nextToken: string | null = null;
