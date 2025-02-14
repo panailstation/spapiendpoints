@@ -77,268 +77,123 @@ const auth = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// const getOrders = async (req: Request, res: Response) => {
-//   const { marketplaceids, createdAfter, createdBefore } = req.query;
-
-//   try {
-//     const createdAfterFormatted = createdAfter ? new Date(createdAfter as string).toISOString() : "2025-01-01T00:00:00Z";
-//     const createdBeforeFormatted = createdBefore ? new Date(createdBefore as string).toISOString() : undefined;
-//     let authTokens = await authenticate();
-//     const baseUrl = `${endpoint}/orders/v0/orders`;
-
-//     const queryParams: Record<string, string> = {
-//       MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
-//       CreatedAfter: createdAfterFormatted,
-//       MaxResultsPerPage: "100", // Reduce number of requests
-//     };
-//     if (createdBeforeFormatted) {
-//       queryParams.CreatedBefore = createdBeforeFormatted;
-//     }
-
-//     let allOrders: any[] = [];
-//     let nextToken: string | null = null;
-//     const maxRetries = 7;
-//     let retryCount = 0;
-
-//     const fetchOrders = async () => {
-//       if (nextToken) {
-//         queryParams.NextToken = nextToken;
-//       } else {
-//         delete queryParams.NextToken;
-//       }
-
-//       const queryString: string = new URLSearchParams({
-//         ...queryParams,
-//         NextToken: queryParams.NextToken || ""
-//       }).toString();
-//       const url = `${baseUrl}?${queryString}`;
-
-//       try {
-//         const response = await axios.get(url, {
-//           headers: {
-//             "x-amz-access-token": authTokens.access_token,
-//             "Content-Type": "application/json",
-//           },
-//         });
-
-//         const ordersData = response.data.payload.Orders || [];
-//         allOrders = allOrders.concat(ordersData);
-
-//         nextToken = response.data.payload.NextToken?.trim() || null;
-//         retryCount = 0; // Reset retry count on successful request
-//       } catch (error) {
-//         if ((error as any).response && (error as any).response.status === 429) {
-//           retryCount++;
-//           if (retryCount > maxRetries) {
-//             throw new Error("Max retries exceeded");
-//           }
-//           const retryAfter =
-//             (error as any).response.headers["retry-after"] || Math.pow(2, retryCount);
-//           console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
-//           await new Promise((resolve) =>
-//             setTimeout(resolve, retryAfter * 1000)
-//           );
-//           await fetchOrders(); // Retry the current request
-//         } else {
-//           throw error;
-//         }
-//       }
-//     };
-
-//     do {
-//       await fetchOrders();
-//     } while (nextToken && nextToken !== null);
-
-//     const values = allOrders.map((order) => ({
-//       BuyerInfo: order.BuyerInfo,
-//       AmazonOrderId: order.AmazonOrderId,
-//       EarliestShipDate: order.EarliestShipDate,
-//       SalesChannel: order.SalesChannel,
-//       OrderStatus: order.OrderStatus,
-//       NumberOfItemsShipped: order.NumberOfItemsShipped,
-//       OrderType: order.OrderType,
-//       IsPremiumOrder: order.IsPremiumOrder,
-//       IsPrime: order.IsPrime,
-//       FulfillmentChannel: order.FulfillmentChannel,
-//       NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
-//       HasRegulatedItems: order.HasRegulatedItems,
-//       IsReplacementOrder: order.IsReplacementOrder,
-//       IsSoldByAB: order.IsSoldByAB,
-//       LatestShipDate: order.LatestShipDate,
-//       ShipServiceLevel: order.ShipServiceLevel,
-//       IsISPU: order.IsISPU,
-//       MarketplaceId: order.MarketplaceId,
-//       PurchaseDate: order.PurchaseDate,
-//       ShippingAddress: order.ShippingAddress,
-//       IsAccessPointOrder: order.IsAccessPointOrder,
-//       SellerOrderId: order.SellerOrderId,
-//       PaymentMethod: order.PaymentMethod,
-//       IsBusinessOrder: order.IsBusinessOrder,
-//       OrderTotal: order.OrderTotal,
-//       PaymentMethodDetails: order.PaymentMethodDetails,
-//       IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
-//       LastUpdateDate: order.LastUpdateDate,
-//       ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
-//     }));
-
-//     res.status(200).json(values);
-//   } catch (error) {
-//     if (error instanceof Error) {
-//       console.error(`Error getting orders: ${error.message}`);
-//     } else {
-//       console.error(`Error getting orders: ${String(error)}`);
-//     }
-//     res
-//       .status(500)
-//       .json({ message: "Error getting orders", error: (error as any).message });
-//   }
-// };
-
-const requestQueue: (() => Promise<void>)[] = [];
-let isProcessingQueue = false;
-
 const getOrders = async (req: Request, res: Response) => {
   const { marketplaceids, createdAfter, createdBefore } = req.query;
 
-  const processRequest = async () => {
-    try {
-      const createdAfterFormatted = createdAfter ? new Date(createdAfter as string).toISOString() : "2025-01-01T00:00:00Z";
-      const createdBeforeFormatted = createdBefore ? new Date(createdBefore as string).toISOString() : undefined;
-      let authTokens = await authenticate();
-      const baseUrl = `${endpoint}/orders/v0/orders`;
+  try {
+    const createdAfterFormatted = createdAfter ? new Date(createdAfter as string).toISOString() : "2025-01-01T00:00:00Z";
+    const createdBeforeFormatted = createdBefore ? new Date(createdBefore as string).toISOString() : undefined;
+    let authTokens = await authenticate();
+    const baseUrl = `${endpoint}/orders/v0/orders`;
 
-      const queryParams: Record<string, string> = {
-        MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
-        CreatedAfter: createdAfterFormatted,
-        MaxResultsPerPage: "100", // Reduce number of requests
-      };
-      if (createdBeforeFormatted) {
-        queryParams.CreatedBefore = createdBeforeFormatted;
-      }
+    const queryParams: Record<string, string> = {
+      MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
+      CreatedAfter: createdAfterFormatted,
+      MaxResultsPerPage: "100", // Reduce number of requests
+    };
+    if (createdBeforeFormatted) {
+      queryParams.CreatedBefore = createdBeforeFormatted;
+    }
 
-      let allOrders: any[] = [];
-      let nextToken: string | null = null;
-      const maxRetries = 7;
-      let retryCount = 0;
+    let allOrders: any[] = [];
+    let nextToken: string | null = null;
+    const maxRetries = 7;
+    let retryCount = 0;
 
-      const fetchOrders = async () => {
-        if (nextToken) {
-          queryParams.NextToken = nextToken;
-        } else {
-          delete queryParams.NextToken;
-        }
-
-        const queryString: string = new URLSearchParams({
-          ...queryParams,
-          NextToken: queryParams.NextToken || ""
-        }).toString();
-        const url = `${baseUrl}?${queryString}`;
-
-        try {
-          const response = await axios.get(url, {
-            headers: {
-              "x-amz-access-token": authTokens.access_token,
-              "Content-Type": "application/json",
-            },
-          });
-
-          const ordersData = response.data.payload.Orders || [];
-          allOrders = allOrders.concat(ordersData);
-
-          nextToken = response.data.payload.NextToken?.trim() || null;
-          retryCount = 0; // Reset retry count on successful request
-        } catch (error) {
-          const status = (error as any).response?.status;
-          if (status === 429 || status === 503) {
-            retryCount++;
-            if (retryCount > maxRetries) {
-              throw new Error("Max retries exceeded");
-            }
-            const retryAfter =
-              (error as any).response.headers["retry-after"] || Math.pow(2, retryCount);
-            console.warn(`${status === 429 ? 'Rate limited' : 'Service unavailable'}. Retrying after ${retryAfter} seconds...`);
-            await new Promise((resolve) =>
-              setTimeout(resolve, retryAfter * 1000)
-            );
-            await fetchOrders(); // Retry the current request
-          } else {
-            throw error;
-          }
-        }
-      };
-
-      do {
-        await fetchOrders();
-      } while (nextToken && nextToken !== null);
-
-      const values = allOrders.map((order) => ({
-        BuyerInfo: order.BuyerInfo,
-        AmazonOrderId: order.AmazonOrderId,
-        EarliestShipDate: order.EarliestShipDate,
-        SalesChannel: order.SalesChannel,
-        OrderStatus: order.OrderStatus,
-        NumberOfItemsShipped: order.NumberOfItemsShipped,
-        OrderType: order.OrderType,
-        IsPremiumOrder: order.IsPremiumOrder,
-        IsPrime: order.IsPrime,
-        FulfillmentChannel: order.FulfillmentChannel,
-        NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
-        HasRegulatedItems: order.HasRegulatedItems,
-        IsReplacementOrder: order.IsReplacementOrder,
-        IsSoldByAB: order.IsSoldByAB,
-        LatestShipDate: order.LatestShipDate,
-        ShipServiceLevel: order.ShipServiceLevel,
-        IsISPU: order.IsISPU,
-        MarketplaceId: order.MarketplaceId,
-        PurchaseDate: order.PurchaseDate,
-        ShippingAddress: order.ShippingAddress,
-        IsAccessPointOrder: order.IsAccessPointOrder,
-        SellerOrderId: order.SellerOrderId,
-        PaymentMethod: order.PaymentMethod,
-        IsBusinessOrder: order.IsBusinessOrder,
-        OrderTotal: order.OrderTotal,
-        PaymentMethodDetails: order.PaymentMethodDetails,
-        IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
-        LastUpdateDate: order.LastUpdateDate,
-        ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
-      }));
-
-      res.status(200).json(values);
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(`Error getting orders: ${error.message}`);
+    const fetchOrders = async () => {
+      if (nextToken) {
+        queryParams.NextToken = nextToken;
       } else {
-        console.error(`Error getting orders: ${String(error)}`);
+        delete queryParams.NextToken;
       }
-      res
-        .status(500)
-        .json({ message: "Error getting orders", error: (error as any).message });
-    } finally {
-      processQueue();
-    }
-  };
 
-  const processQueue = () => {
-    if (requestQueue.length > 0) {
-      const nextRequest = requestQueue.shift();
-      if (nextRequest) {
-        nextRequest().catch(console.error);
+      const queryString: string = new URLSearchParams({
+        ...queryParams,
+        NextToken: queryParams.NextToken || ""
+      }).toString();
+      const url = `${baseUrl}?${queryString}`;
+
+      try {
+        const response = await axios.get(url, {
+          headers: {
+            "x-amz-access-token": authTokens.access_token,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const ordersData = response.data.payload.Orders || [];
+        allOrders = allOrders.concat(ordersData);
+
+        nextToken = response.data.payload.NextToken?.trim() || null;
+        retryCount = 0; // Reset retry count on successful request
+      } catch (error) {
+        if ((error as any).response && (error as any).response.status === 429) {
+          retryCount++;
+          if (retryCount > maxRetries) {
+            throw new Error("Max retries exceeded");
+          }
+          const retryAfter =
+            (error as any).response.headers["retry-after"] || Math.pow(2, retryCount);
+          console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000)
+          );
+          await fetchOrders(); // Retry the current request
+        } else {
+          throw error;
+        }
       }
+    };
+
+    do {
+      await fetchOrders();
+    } while (nextToken && nextToken !== null);
+
+    const values = allOrders.map((order) => ({
+      BuyerInfo: order.BuyerInfo,
+      AmazonOrderId: order.AmazonOrderId,
+      EarliestShipDate: order.EarliestShipDate,
+      SalesChannel: order.SalesChannel,
+      OrderStatus: order.OrderStatus,
+      NumberOfItemsShipped: order.NumberOfItemsShipped,
+      OrderType: order.OrderType,
+      IsPremiumOrder: order.IsPremiumOrder,
+      IsPrime: order.IsPrime,
+      FulfillmentChannel: order.FulfillmentChannel,
+      NumberOfItemsUnshipped: order.NumberOfItemsUnshipped,
+      HasRegulatedItems: order.HasRegulatedItems,
+      IsReplacementOrder: order.IsReplacementOrder,
+      IsSoldByAB: order.IsSoldByAB,
+      LatestShipDate: order.LatestShipDate,
+      ShipServiceLevel: order.ShipServiceLevel,
+      IsISPU: order.IsISPU,
+      MarketplaceId: order.MarketplaceId,
+      PurchaseDate: order.PurchaseDate,
+      ShippingAddress: order.ShippingAddress,
+      IsAccessPointOrder: order.IsAccessPointOrder,
+      SellerOrderId: order.SellerOrderId,
+      PaymentMethod: order.PaymentMethod,
+      IsBusinessOrder: order.IsBusinessOrder,
+      OrderTotal: order.OrderTotal,
+      PaymentMethodDetails: order.PaymentMethodDetails,
+      IsGlobalExpressEnabled: order.IsGlobalExpressEnabled,
+      LastUpdateDate: order.LastUpdateDate,
+      ShipmentServiceLevelCategory: order.ShipmentServiceLevelCategory,
+    }));
+
+    res.status(200).json(values);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error getting orders: ${error.message}`);
     } else {
-      isProcessingQueue = false;
+      console.error(`Error getting orders: ${String(error)}`);
     }
-  };
-
-  const queueRequest = () => {
-    requestQueue.push(processRequest);
-    if (!isProcessingQueue) {
-      isProcessingQueue = true;
-      processQueue();
-    }
-  };
-
-  queueRequest();
+    res
+      .status(500)
+      .json({ message: "Error getting orders", error: (error as any).message });
+  }
 };
+
 
 // const getOrder = async (req, res) => {
 //   try {
