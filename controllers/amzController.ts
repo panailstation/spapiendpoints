@@ -78,22 +78,22 @@ const auth = async (req: Request, res: Response): Promise<void> => {
 };
 
 // const getOrders = async (req: Request, res: Response) => {
-//   const { marketplaceids } = req.query;
+//   const { marketplaceids, createdAfter, createdBefore } = req.query;
 
 //   try {
-//     const createdAfter = "2025-01-01T00:00:00Z";
-//     const createdBefore = "2025-01-31T23:59:59Z";
+//     const createdAfterFormatted = createdAfter ? new Date(createdAfter as string).toISOString() : "2025-01-01T00:00:00Z";
+//     const createdBeforeFormatted = createdBefore ? new Date(createdBefore as string).toISOString() : undefined;
 //     let authTokens = await authenticate();
 //     const baseUrl = `${endpoint}/orders/v0/orders`;
 
 //     const queryParams: Record<string, string> = {
 //       MarketplaceIds: Array.isArray(marketplaceids) ? marketplaceids.join(',') : marketplaceids as string,
-//       CreatedAfter: createdAfter,
-//       CreatedBefore: createdBefore,
+//       CreatedAfter: createdAfterFormatted,
 //       MaxResultsPerPage: "100", // Reduce number of requests
 //     };
-
-//     // CreatedBefore: createdBefore,
+//     if (createdBeforeFormatted) {
+//       queryParams.CreatedBefore = createdBeforeFormatted;
+//     }
 
 //     let allOrders: any[] = [];
 //     let nextToken: string | null = null;
@@ -103,7 +103,6 @@ const auth = async (req: Request, res: Response): Promise<void> => {
 //     do {
 //       if (nextToken) {
 //         queryParams.NextToken = nextToken;
-//         // await sleep(15000); // Increased delay to 15 seconds
 //       } else {
 //         delete queryParams.NextToken;
 //       }
@@ -125,10 +124,7 @@ const auth = async (req: Request, res: Response): Promise<void> => {
 //         const ordersData = response.data.payload.Orders || [];
 //         allOrders = allOrders.concat(ordersData);
 
-//         // Ensure nextToken exists and is valid before continuing
 //         nextToken = response.data.payload.NextToken?.trim() || null;
-//         // nextToken = null;
-
 //         retryCount = 0; // Reset retry count on successful request
 //       } catch (error) {
 //         if ((error as any).response && (error as any).response.status === 429) {
@@ -146,7 +142,7 @@ const auth = async (req: Request, res: Response): Promise<void> => {
 //           throw error;
 //         }
 //       }
-//     } while (nextToken && nextToken !== "null");
+//     } while (nextToken && nextToken !== null);
 
 //     const values = allOrders.map((order) => ({
 //       BuyerInfo: order.BuyerInfo,
@@ -216,7 +212,7 @@ const getOrders = async (req: Request, res: Response) => {
     const maxRetries = 7;
     let retryCount = 0;
 
-    do {
+    const fetchOrders = async () => {
       if (nextToken) {
         queryParams.NextToken = nextToken;
       } else {
@@ -254,10 +250,15 @@ const getOrders = async (req: Request, res: Response) => {
           await new Promise((resolve) =>
             setTimeout(resolve, retryAfter * 1000)
           );
+          await fetchOrders(); // Retry the current request
         } else {
           throw error;
         }
       }
+    };
+
+    do {
+      await fetchOrders();
     } while (nextToken && nextToken !== null);
 
     const values = allOrders.map((order) => ({
