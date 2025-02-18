@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   // getListingItems,
   getOrders,
+  getOrdersItems,
   // getShipment,
   auth,
   // getOrder,
@@ -19,6 +20,7 @@ const {
  
 router.post("/auth", auth);
 router.get("/get-orders", getOrders);
+router.get("/get-orders/items", getOrdersItems);
 // router.get("/get-order", getOrder); // a query "id" is required. e.g /get-order?id=302-3657553-1461165
 // router.post("/createShipment", createShipment);
 // router.get("/getShipment", getShipment); // a query "id" is required. e.g /getShipment?id=89108749065790
